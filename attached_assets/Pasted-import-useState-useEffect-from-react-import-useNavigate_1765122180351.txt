@@ -1,0 +1,114 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { BalanceCard } from "@/components/BalanceCard";
+import { UseCashbackForm } from "@/components/UseCashbackForm";
+import { TransactionHistory } from "@/components/TransactionHistory";
+import { Transaction } from "@/components/TransactionItem";
+import { Coins, LogOut, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const Index = () => {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  
+  const [available, setAvailable] = useState(12.40);
+  const [pending] = useState(2.00);
+  
+  const [transactions, setTransactions] = useState<Transaction[]>([
+    { 
+      id: "1", 
+      text: "Boulangerie Antoine", 
+      amount: 2.00, 
+      status: "pending",
+      date: "Aujourd'hui, 10:32"
+    },
+    { 
+      id: "2", 
+      text: "Café Marcel", 
+      amount: -3.00, 
+      status: "used",
+      date: "Hier, 14:15"
+    },
+    { 
+      id: "3", 
+      text: "Supermarché Bio", 
+      amount: 5.40, 
+      status: "earned",
+      date: "5 déc., 18:45"
+    },
+    { 
+      id: "4", 
+      text: "Pharmacie Centrale", 
+      amount: 1.20, 
+      status: "earned",
+      date: "3 déc., 09:20"
+    },
+  ]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  const handleUseCashback = (amount: number) => {
+    setAvailable((prev) => prev - amount);
+    
+    const newTransaction: Transaction = {
+      id: Date.now().toString(),
+      text: "Cashback utilisé",
+      amount: -amount,
+      status: "used",
+      date: "À l'instant"
+    };
+    
+    setTransactions((prev) => [newTransaction, ...prev]);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container max-w-lg py-8 space-y-6">
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+              <Coins className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold">Mon Cashback</h1>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleSignOut}>
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </header>
+
+        <BalanceCard available={available} pending={pending} />
+        
+        <UseCashbackForm 
+          availableBalance={available} 
+          onUseCashback={handleUseCashback} 
+        />
+        
+        <TransactionHistory transactions={transactions} />
+      </div>
+    </div>
+  );
+};
+
+export default Index;
