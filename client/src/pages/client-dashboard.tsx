@@ -79,16 +79,16 @@ export default function ClientDashboard() {
 
         {activeTab === "bonsplans" && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold">Bons Plans</h2>
-            <p className="text-sm text-muted-foreground">
-              Découvrez les offres exclusives de nos commerçants partenaires
-            </p>
             <MerchantFilters
               searchQuery={bonsPlansSearchQuery}
               onSearchChange={setBonsPlansSearchQuery}
               activeCategory={bonsPlansCategory}
               onCategoryChange={setBonsPlansCategory}
             />
+            <h2 className="text-xl font-bold">Bons Plans</h2>
+            <p className="text-sm text-muted-foreground">
+              Découvrez les offres exclusives de nos commerçants partenaires
+            </p>
             <div className="space-y-4">
               {filteredBonsPlans.length > 0 ? (
                 filteredBonsPlans.map((bp) => (
