@@ -38,6 +38,8 @@ export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState<ClientTab>("compte");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [bonsPlansSearchQuery, setBonsPlansSearchQuery] = useState("");
+  const [bonsPlansCategory, setBonsPlansCategory] = useState<CategoryFilter>("all");
 
   // todo: remove mock functionality
   const clientId = "CLT-7X9K2M";
@@ -48,6 +50,13 @@ export default function ClientDashboard() {
   const filteredMerchants = mockMerchants.filter((m) => {
     const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === "all" || m.category.toLowerCase() === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredBonsPlans = mockBonsPlans.filter((bp) => {
+    const matchesSearch = bp.title.toLowerCase().includes(bonsPlansSearchQuery.toLowerCase()) ||
+      bp.merchantName.toLowerCase().includes(bonsPlansSearchQuery.toLowerCase());
+    const matchesCategory = bonsPlansCategory === "all" || bp.category.toLowerCase() === bonsPlansCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -74,14 +83,26 @@ export default function ClientDashboard() {
             <p className="text-sm text-muted-foreground">
               Découvrez les offres exclusives de nos commerçants partenaires
             </p>
+            <MerchantFilters
+              searchQuery={bonsPlansSearchQuery}
+              onSearchChange={setBonsPlansSearchQuery}
+              activeCategory={bonsPlansCategory}
+              onCategoryChange={setBonsPlansCategory}
+            />
             <div className="space-y-4">
-              {mockBonsPlans.map((bp) => (
-                <BonPlanCard
-                  key={bp.id}
-                  bonPlan={bp}
-                  onViewOffer={() => console.log("View offer:", bp.id)}
-                />
-              ))}
+              {filteredBonsPlans.length > 0 ? (
+                filteredBonsPlans.map((bp) => (
+                  <BonPlanCard
+                    key={bp.id}
+                    bonPlan={bp}
+                    onViewOffer={() => console.log("View offer:", bp.id)}
+                  />
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Aucun bon plan trouvé pour cette recherche
+                </p>
+              )}
             </div>
           </div>
         )}
