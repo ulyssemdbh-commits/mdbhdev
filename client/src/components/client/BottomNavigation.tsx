@@ -15,7 +15,7 @@ const tabs = [
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t safe-area-pb">
+    <nav className="sticky top-0 z-50 bg-background border-b">
       <div className="flex items-stretch">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -24,7 +24,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors ${
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover-elevate"
@@ -36,7 +36,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
                 {tab.label}
               </span>
               {isActive && (
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-primary rounded-t-full" />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-primary rounded-b-full" />
               )}
             </button>
           );

@@ -65,8 +65,9 @@ export default function ClientDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background">
       <Header title="REV" onLogout={handleLogout} />
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="container max-w-lg px-4 py-6">
         {activeTab === "compte" && (
@@ -132,8 +133,6 @@ export default function ClientDashboard() {
           </div>
         )}
       </main>
-
-      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
