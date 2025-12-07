@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Camera, BarChart3, History, Settings } from "lucide-react";
+import { Camera, BarChart3 } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { QRScanner } from "@/components/merchant/QRScanner";
 import { TransactionForm } from "@/components/merchant/TransactionForm";
 import { MerchantStats } from "@/components/merchant/MerchantStats";
 import { MerchantTransactionList, type MerchantTransaction } from "@/components/merchant/MerchantTransactionList";
+import MerchantStatistics from "@/pages/merchant-statistics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
-type MerchantView = "scanner" | "form" | "dashboard";
+type MerchantView = "scanner" | "form" | "dashboard" | "statistics";
 
 // todo: remove mock functionality
 const mockTransactions: MerchantTransaction[] = [
@@ -74,6 +75,10 @@ export default function MerchantDashboard() {
     console.log("Merchant logout triggered");
   };
 
+  if (view === "statistics") {
+    return <MerchantStatistics onBack={() => setView("dashboard")} />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header title={merchantName} onLogout={handleLogout} />
@@ -102,6 +107,16 @@ export default function MerchantDashboard() {
               weeklyCommission={weeklyStats.commission}
               totalClients={weeklyStats.clients}
             />
+
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setView("statistics")}
+              data-testid="button-view-statistics"
+            >
+              <BarChart3 className="w-5 h-5" />
+              Voir les statistiques détaillées
+            </Button>
 
             <MerchantTransactionList
               transactions={transactions}
