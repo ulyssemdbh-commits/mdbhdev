@@ -3,7 +3,6 @@ import { Camera, BarChart3 } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { QRScanner } from "@/components/merchant/QRScanner";
 import { TransactionForm } from "@/components/merchant/TransactionForm";
-import { MerchantStats } from "@/components/merchant/MerchantStats";
 import { MerchantTransactionList, type MerchantTransaction } from "@/components/merchant/MerchantTransactionList";
 import MerchantStatistics from "@/pages/merchant-statistics";
 import { Button } from "@/components/ui/button";
@@ -28,13 +27,6 @@ export default function MerchantDashboard() {
 
   // todo: remove mock functionality
   const merchantName = "Boulangerie Antoine";
-  const weeklyStats = {
-    transactions: 47,
-    sales: 1250.80,
-    commission: 162.60,
-    clients: 32,
-    cashbackUsed: 137.40,
-  };
 
   const handleScanSuccess = (clientId: string) => {
     setScannedClientId(clientId);
@@ -97,17 +89,14 @@ export default function MerchantDashboard() {
                   data-testid="button-open-scanner"
                 >
                   <Camera className="w-6 h-6" />
-                  Scanner un client
+                  Scannez un REV CODE
                 </Button>
               </CardContent>
             </Card>
 
-            <MerchantStats
-              weeklyTransactions={weeklyStats.transactions}
-              weeklySales={weeklyStats.sales}
-              weeklyCommission={weeklyStats.commission}
-              totalClients={weeklyStats.clients}
-              cashbackUsed={weeklyStats.cashbackUsed}
+            <MerchantTransactionList
+              transactions={transactions}
+              onCancelTransaction={handleCancelTransaction}
             />
 
             <Button
@@ -119,11 +108,6 @@ export default function MerchantDashboard() {
               <BarChart3 className="w-5 h-5" />
               Voir les statistiques détaillées
             </Button>
-
-            <MerchantTransactionList
-              transactions={transactions}
-              onCancelTransaction={handleCancelTransaction}
-            />
           </>
         )}
 
