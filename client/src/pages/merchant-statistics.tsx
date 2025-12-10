@@ -15,6 +15,7 @@ interface DailyStats {
   sales: number;
   commission: number;
   clients: number;
+  cashbackUsed: number;
 }
 
 interface MerchantStatisticsProps {
@@ -22,20 +23,20 @@ interface MerchantStatisticsProps {
 }
 
 const mockDailyStats: DailyStats[] = [
-  { date: "2025-12-07", transactions: 12, sales: 245.50, commission: 31.92, clients: 8 },
-  { date: "2025-12-06", transactions: 15, sales: 312.00, commission: 40.56, clients: 11 },
-  { date: "2025-12-05", transactions: 8, sales: 178.90, commission: 23.26, clients: 6 },
-  { date: "2025-12-04", transactions: 18, sales: 425.00, commission: 55.25, clients: 14 },
-  { date: "2025-12-03", transactions: 10, sales: 198.50, commission: 25.81, clients: 7 },
-  { date: "2025-12-02", transactions: 14, sales: 287.30, commission: 37.35, clients: 10 },
-  { date: "2025-12-01", transactions: 9, sales: 156.80, commission: 20.38, clients: 5 },
-  { date: "2025-11-30", transactions: 20, sales: 478.00, commission: 62.14, clients: 16 },
-  { date: "2025-11-29", transactions: 11, sales: 234.50, commission: 30.49, clients: 9 },
-  { date: "2025-11-28", transactions: 16, sales: 356.70, commission: 46.37, clients: 12 },
-  { date: "2025-11-15", transactions: 13, sales: 289.00, commission: 37.57, clients: 10 },
-  { date: "2025-11-01", transactions: 22, sales: 512.00, commission: 66.56, clients: 18 },
-  { date: "2025-10-15", transactions: 19, sales: 445.00, commission: 57.85, clients: 15 },
-  { date: "2025-09-01", transactions: 25, sales: 589.00, commission: 76.57, clients: 20 },
+  { date: "2025-12-07", transactions: 12, sales: 245.50, commission: 31.92, clients: 8, cashbackUsed: 18.50 },
+  { date: "2025-12-06", transactions: 15, sales: 312.00, commission: 40.56, clients: 11, cashbackUsed: 25.00 },
+  { date: "2025-12-05", transactions: 8, sales: 178.90, commission: 23.26, clients: 6, cashbackUsed: 12.40 },
+  { date: "2025-12-04", transactions: 18, sales: 425.00, commission: 55.25, clients: 14, cashbackUsed: 35.80 },
+  { date: "2025-12-03", transactions: 10, sales: 198.50, commission: 25.81, clients: 7, cashbackUsed: 15.20 },
+  { date: "2025-12-02", transactions: 14, sales: 287.30, commission: 37.35, clients: 10, cashbackUsed: 22.00 },
+  { date: "2025-12-01", transactions: 9, sales: 156.80, commission: 20.38, clients: 5, cashbackUsed: 8.50 },
+  { date: "2025-11-30", transactions: 20, sales: 478.00, commission: 62.14, clients: 16, cashbackUsed: 42.00 },
+  { date: "2025-11-29", transactions: 11, sales: 234.50, commission: 30.49, clients: 9, cashbackUsed: 19.00 },
+  { date: "2025-11-28", transactions: 16, sales: 356.70, commission: 46.37, clients: 12, cashbackUsed: 28.50 },
+  { date: "2025-11-15", transactions: 13, sales: 289.00, commission: 37.57, clients: 10, cashbackUsed: 21.00 },
+  { date: "2025-11-01", transactions: 22, sales: 512.00, commission: 66.56, clients: 18, cashbackUsed: 45.00 },
+  { date: "2025-10-15", transactions: 19, sales: 445.00, commission: 57.85, clients: 15, cashbackUsed: 38.00 },
+  { date: "2025-09-01", transactions: 25, sales: 589.00, commission: 76.57, clients: 20, cashbackUsed: 52.00 },
 ];
 
 const accountOpeningDate = "2025-06-15";
@@ -103,8 +104,9 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
         sales: acc.sales + stat.sales,
         commission: acc.commission + stat.commission,
         clients: acc.clients + stat.clients,
+        cashbackUsed: acc.cashbackUsed + stat.cashbackUsed,
       }),
-      { transactions: 0, sales: 0, commission: 0, clients: 0 }
+      { transactions: 0, sales: 0, commission: 0, clients: 0, cashbackUsed: 0 }
     );
   }, [filteredStats]);
 
@@ -124,20 +126,22 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
     doc.setFontSize(11);
     doc.text(`Transactions: ${totals.transactions}`, 14, 65);
     doc.text(`Chiffre d'affaires: ${formatCurrency(totals.sales)}`, 14, 73);
-    doc.text(`Commission REV (13%): ${formatCurrency(totals.commission)}`, 14, 81);
-    doc.text(`Clients uniques: ${totals.clients}`, 14, 89);
+    doc.text(`Cashback utilisé: ${formatCurrency(totals.cashbackUsed)}`, 14, 81);
+    doc.text(`Commission REV (13%): ${formatCurrency(totals.commission)}`, 14, 89);
+    doc.text(`Clients uniques: ${totals.clients}`, 14, 97);
     
     if (filteredStats.length > 0) {
       doc.setFontSize(14);
-      doc.text("Détail par jour", 14, 105);
+      doc.text("Détail par jour", 14, 113);
       
       autoTable(doc, {
-        startY: 110,
-        head: [["Date", "Transactions", "CA", "Commission", "Clients"]],
+        startY: 118,
+        head: [["Date", "Transactions", "CA", "Cashback", "Commission", "Clients"]],
         body: filteredStats.map((stat) => [
           formatDate(stat.date),
           stat.transactions.toString(),
           formatCurrency(stat.sales),
+          formatCurrency(stat.cashbackUsed),
           formatCurrency(stat.commission),
           stat.clients.toString(),
         ]),
@@ -169,6 +173,12 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
       title: "Chiffre d'affaires", 
       value: totals.sales, 
       icon: TrendingUp,
+      format: formatCurrency
+    },
+    { 
+      title: "Cashback utilisé", 
+      value: totals.cashbackUsed, 
+      icon: Wallet,
       format: formatCurrency
     },
     { 

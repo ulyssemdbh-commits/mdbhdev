@@ -33,6 +33,7 @@ export default function MerchantDashboard() {
     sales: 1250.80,
     commission: 162.60,
     clients: 32,
+    cashbackUsed: 137.40,
   };
 
   const handleScanSuccess = (clientId: string) => {
@@ -106,6 +107,7 @@ export default function MerchantDashboard() {
               weeklySales={weeklyStats.sales}
               weeklyCommission={weeklyStats.commission}
               totalClients={weeklyStats.clients}
+              cashbackUsed={weeklyStats.cashbackUsed}
             />
 
             <Button

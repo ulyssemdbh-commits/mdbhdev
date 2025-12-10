@@ -1,4 +1,4 @@
-import { TrendingUp, Users, Receipt, Euro } from "lucide-react";
+import { TrendingUp, Users, Receipt, Euro, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface MerchantStatsProps {
@@ -6,6 +6,7 @@ interface MerchantStatsProps {
   weeklySales: number;
   weeklyCommission: number;
   totalClients: number;
+  cashbackUsed: number;
 }
 
 export function MerchantStats({
@@ -13,6 +14,7 @@ export function MerchantStats({
   weeklySales,
   weeklyCommission,
   totalClients,
+  cashbackUsed,
 }: MerchantStatsProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("fr-FR", {
@@ -42,6 +44,13 @@ export function MerchantStats({
       icon: Users,
       color: "text-purple-600 dark:text-purple-400",
       bgColor: "bg-purple-100 dark:bg-purple-900/30",
+    },
+    {
+      label: "Cashback utilisé",
+      value: formatCurrency(cashbackUsed),
+      icon: Wallet,
+      color: "text-cyan-600 dark:text-cyan-400",
+      bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
     },
     {
       label: "Commission due (13%)",
