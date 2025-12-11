@@ -1,38 +1,228 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import {
+  users,
+  merchants,
+  transactions,
+  cashbackBalances,
+  cashbackEntries,
+  type User,
+  type UpsertUser,
+  type Merchant,
+  type InsertMerchant,
+  type Transaction,
+  type InsertTransaction,
+  type CashbackBalance,
+  type InsertCashbackBalance,
+  type CashbackEntry,
+  type InsertCashbackEntry,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  updateUserRole(id: string, role: string): Promise<User | undefined>;
+  
+  // Merchant operations
+  getMerchant(id: string): Promise<Merchant | undefined>;
+  getMerchantByUserId(userId: string): Promise<Merchant | undefined>;
+  getMerchants(): Promise<Merchant[]>;
+  getMerchantsByCategory(category: string): Promise<Merchant[]>;
+  createMerchant(merchant: InsertMerchant): Promise<Merchant>;
+  updateMerchant(id: string, merchant: Partial<InsertMerchant>): Promise<Merchant | undefined>;
+  
+  // Transaction operations
+  getTransaction(id: string): Promise<Transaction | undefined>;
+  getTransactionsByMerchant(merchantId: string): Promise<Transaction[]>;
+  getTransactionsByClient(clientId: string): Promise<Transaction[]>;
+  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  cancelTransaction(id: string): Promise<Transaction | undefined>;
+  
+  // Cashback balance operations
+  getCashbackBalance(userId: string, merchantId: string): Promise<CashbackBalance | undefined>;
+  getCashbackBalancesByUser(userId: string): Promise<CashbackBalance[]>;
+  upsertCashbackBalance(balance: InsertCashbackBalance): Promise<CashbackBalance>;
+  
+  // Cashback entry operations
+  getCashbackEntry(id: string): Promise<CashbackEntry | undefined>;
+  getCashbackEntriesByUser(userId: string): Promise<CashbackEntry[]>;
+  getPendingCashbackEntries(): Promise<CashbackEntry[]>;
+  createCashbackEntry(entry: InsertCashbackEntry): Promise<CashbackEntry>;
+  unlockCashbackEntry(id: string): Promise<CashbackEntry | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // User operations
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserRole(id: string, role: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  // Merchant operations
+  async getMerchant(id: string): Promise<Merchant | undefined> {
+    const [merchant] = await db.select().from(merchants).where(eq(merchants.id, id));
+    return merchant;
+  }
+
+  async getMerchantByUserId(userId: string): Promise<Merchant | undefined> {
+    const [merchant] = await db.select().from(merchants).where(eq(merchants.userId, userId));
+    return merchant;
+  }
+
+  async getMerchants(): Promise<Merchant[]> {
+    return db.select().from(merchants).where(eq(merchants.isActive, true));
+  }
+
+  async getMerchantsByCategory(category: string): Promise<Merchant[]> {
+    return db.select().from(merchants).where(
+      and(eq(merchants.category, category), eq(merchants.isActive, true))
     );
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createMerchant(merchant: InsertMerchant): Promise<Merchant> {
+    const [created] = await db.insert(merchants).values(merchant).returning();
+    return created;
+  }
+
+  async updateMerchant(id: string, merchant: Partial<InsertMerchant>): Promise<Merchant | undefined> {
+    const [updated] = await db
+      .update(merchants)
+      .set(merchant)
+      .where(eq(merchants.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Transaction operations
+  async getTransaction(id: string): Promise<Transaction | undefined> {
+    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
+    return transaction;
+  }
+
+  async getTransactionsByMerchant(merchantId: string): Promise<Transaction[]> {
+    return db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.merchantId, merchantId))
+      .orderBy(desc(transactions.createdAt));
+  }
+
+  async getTransactionsByClient(clientId: string): Promise<Transaction[]> {
+    return db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.clientId, clientId))
+      .orderBy(desc(transactions.createdAt));
+  }
+
+  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+    const [created] = await db.insert(transactions).values(transaction).returning();
+    return created;
+  }
+
+  async cancelTransaction(id: string): Promise<Transaction | undefined> {
+    const [cancelled] = await db
+      .update(transactions)
+      .set({ status: "cancelled", cancelledAt: new Date() })
+      .where(eq(transactions.id, id))
+      .returning();
+    return cancelled;
+  }
+
+  // Cashback balance operations
+  async getCashbackBalance(userId: string, merchantId: string): Promise<CashbackBalance | undefined> {
+    const [balance] = await db
+      .select()
+      .from(cashbackBalances)
+      .where(and(eq(cashbackBalances.userId, userId), eq(cashbackBalances.merchantId, merchantId)));
+    return balance;
+  }
+
+  async getCashbackBalancesByUser(userId: string): Promise<CashbackBalance[]> {
+    return db.select().from(cashbackBalances).where(eq(cashbackBalances.userId, userId));
+  }
+
+  async upsertCashbackBalance(balance: InsertCashbackBalance): Promise<CashbackBalance> {
+    const existing = await this.getCashbackBalance(balance.userId, balance.merchantId);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(cashbackBalances)
+        .set({
+          availableBalance: balance.availableBalance,
+          pendingBalance: balance.pendingBalance,
+        })
+        .where(eq(cashbackBalances.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    const [created] = await db.insert(cashbackBalances).values(balance).returning();
+    return created;
+  }
+
+  // Cashback entry operations
+  async getCashbackEntry(id: string): Promise<CashbackEntry | undefined> {
+    const [entry] = await db.select().from(cashbackEntries).where(eq(cashbackEntries.id, id));
+    return entry;
+  }
+
+  async getCashbackEntriesByUser(userId: string): Promise<CashbackEntry[]> {
+    return db
+      .select()
+      .from(cashbackEntries)
+      .where(eq(cashbackEntries.userId, userId))
+      .orderBy(desc(cashbackEntries.createdAt));
+  }
+
+  async getPendingCashbackEntries(): Promise<CashbackEntry[]> {
+    return db
+      .select()
+      .from(cashbackEntries)
+      .where(and(
+        eq(cashbackEntries.status, "pending"),
+        sql`${cashbackEntries.unlocksAt} <= NOW()`
+      ));
+  }
+
+  async createCashbackEntry(entry: InsertCashbackEntry): Promise<CashbackEntry> {
+    const [created] = await db.insert(cashbackEntries).values(entry).returning();
+    return created;
+  }
+
+  async unlockCashbackEntry(id: string): Promise<CashbackEntry | undefined> {
+    const [unlocked] = await db
+      .update(cashbackEntries)
+      .set({ status: "available", unlockedAt: new Date() })
+      .where(eq(cashbackEntries.id, id))
+      .returning();
+    return unlocked;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
