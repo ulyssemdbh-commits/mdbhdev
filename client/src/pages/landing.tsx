@@ -1,13 +1,9 @@
-import { MapPin, Store, Users, Wallet, ArrowRight, CheckCircle } from "lucide-react";
+import { MapPin, Store, Users, Wallet, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
-interface LandingPageProps {
-  onSelectRole: (role: "client" | "merchant" | "admin") => void;
-}
-
-export default function LandingPage({ onSelectRole }: LandingPageProps) {
+export default function LandingPage() {
   const features = [
     {
       icon: Wallet,
@@ -32,6 +28,10 @@ export default function LandingPage({ onSelectRole }: LandingPageProps) {
     "Bons plans exclusifs chaque semaine",
     "Application simple et gratuite",
   ];
+
+  const handleLogin = () => {
+    window.location.href = "/api/login";
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,41 +89,17 @@ export default function LandingPage({ onSelectRole }: LandingPageProps) {
         </section>
 
         <section className="space-y-4 pt-4">
-          <h2 className="text-xl font-bold text-center">Accéder à l'application</h2>
-          <div className="space-y-3">
-            <Button
-              className="w-full gap-2"
-              size="lg"
-              onClick={() => onSelectRole("client")}
-              data-testid="button-client-login"
-            >
-              <Users className="w-5 h-5" />
-              Espace Client
-              <ArrowRight className="w-4 h-4 ml-auto" />
-            </Button>
-            <Button
-              className="w-full gap-2"
-              size="lg"
-              variant="secondary"
-              onClick={() => onSelectRole("merchant")}
-              data-testid="button-merchant-login"
-            >
-              <Store className="w-5 h-5" />
-              Espace Commerçant
-              <ArrowRight className="w-4 h-4 ml-auto" />
-            </Button>
-            <Button
-              className="w-full gap-2"
-              size="lg"
-              variant="outline"
-              onClick={() => onSelectRole("admin")}
-              data-testid="button-admin-login"
-            >
-              <MapPin className="w-5 h-5" />
-              Administration REV
-              <ArrowRight className="w-4 h-4 ml-auto" />
-            </Button>
-          </div>
+          <Button
+            className="w-full gap-2"
+            size="lg"
+            onClick={handleLogin}
+            data-testid="button-login"
+          >
+            Se connecter / S'inscrire
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            Connectez-vous pour accéder à votre espace personnel
+          </p>
         </section>
 
         <footer className="text-center text-sm text-muted-foreground pt-8 pb-4">

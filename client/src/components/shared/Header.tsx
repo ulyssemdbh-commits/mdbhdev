@@ -9,6 +9,18 @@ interface HeaderProps {
 }
 
 export function Header({ title = "REV", showLogout = true, onLogout }: HeaderProps) {
+  const handleLogout = async () => {
+    if (onLogout) {
+      onLogout();
+    }
+    try {
+      await fetch("/api/logout", { method: "POST", credentials: "include" });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+    window.location.href = "/";
+  };
+
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between gap-4 px-4 py-3 border-b bg-background">
       <div className="flex items-center gap-2">
@@ -23,7 +35,7 @@ export function Header({ title = "REV", showLogout = true, onLogout }: HeaderPro
           <Button
             size="icon"
             variant="ghost"
-            onClick={onLogout}
+            onClick={handleLogout}
             data-testid="button-logout"
           >
             <LogOut className="h-5 w-5" />

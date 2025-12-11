@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Camera, BarChart3 } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Camera, BarChart3, Loader2 } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { QRScanner } from "@/components/merchant/QRScanner";
 import { TransactionForm } from "@/components/merchant/TransactionForm";
@@ -8,73 +9,126 @@ import MerchantStatistics from "@/pages/merchant-statistics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Merchant, Transaction } from "@shared/schema";
 
 type MerchantView = "scanner" | "form" | "dashboard" | "statistics";
-
-// todo: remove mock functionality
-const mockTransactions: MerchantTransaction[] = [
-  { id: "1", clientName: "Marie Dupont", clientId: "CLT-7X9K2M", amount: 25.50, cashbackGenerated: 2.55, status: "completed", date: "Aujourd'hui, 10:32", canCancel: true },
-  { id: "2", clientName: "Pierre Martin", clientId: "CLT-3Y8P1N", amount: 42.00, cashbackGenerated: 4.20, status: "completed", date: "Aujourd'hui, 09:15", canCancel: false },
-  { id: "3", clientName: "Sophie Bernard", clientId: "CLT-5Z2Q7R", amount: 18.90, cashbackGenerated: 1.89, status: "pending", date: "Hier, 17:45", canCancel: false },
-  { id: "4", clientName: "Lucas Petit", clientId: "CLT-9W4S6T", amount: 35.00, cashbackGenerated: 3.50, status: "cancelled", date: "Hier, 14:20", canCancel: false },
-];
 
 export default function MerchantDashboard() {
   const [view, setView] = useState<MerchantView>("dashboard");
   const [scannedClientId, setScannedClientId] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState(mockTransactions);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  // todo: remove mock functionality
-  const merchantName = "Boulangerie Antoine";
+  const { data: merchantProfile, isLoading: merchantLoading } = useQuery<Merchant>({
+    queryKey: ["/api/merchant/me"],
+  });
+
+  const { data: transactionsData = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
+    queryKey: ["/api/transactions/merchant"],
+  });
+
+  const createTransactionMutation = useMutation({
+    mutationFn: async ({ clientId, amount }: { clientId: string; amount: number }) => {
+      return apiRequest("POST", "/api/transactions", { clientId, amount });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions/merchant"] });
+    },
+  });
+
+  const cancelTransactionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/transactions/${id}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions/merchant"] });
+    },
+  });
+
+  const merchantName = merchantProfile?.name || "Commerçant";
+
+  // Transform transactions for display
+  const transactions: MerchantTransaction[] = transactionsData.map((tx) => {
+    const createdAt = new Date(tx.createdAt);
+    const twoHoursAgo = new Date();
+    twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+    const canCancel = tx.status === "completed" && createdAt > twoHoursAgo;
+
+    return {
+      id: tx.id,
+      clientName: "Client REV",
+      clientId: tx.clientId,
+      amount: parseFloat(tx.amount),
+      cashbackGenerated: parseFloat(tx.cashbackAmount),
+      status: tx.status as "completed" | "pending" | "cancelled",
+      date: createdAt.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      canCancel,
+    };
+  });
 
   const handleScanSuccess = (clientId: string) => {
     setScannedClientId(clientId);
     setView("form");
   };
 
-  const handleTransactionSubmit = (amount: number) => {
-    const newTx: MerchantTransaction = {
-      id: Date.now().toString(),
-      clientName: "Client REV",
-      clientId: scannedClientId || "CLT-UNKNOWN",
-      amount,
-      cashbackGenerated: amount * 0.1,
-      status: "completed",
-      date: "À l'instant",
-      canCancel: true,
-    };
-    setTransactions([newTx, ...transactions]);
-    toast({
-      title: "Transaction validée",
-      description: `${amount.toFixed(2)}€ enregistré - ${(amount * 0.1).toFixed(2)}€ de cashback généré`,
-    });
-    setScannedClientId(null);
-    setView("dashboard");
+  const handleTransactionSubmit = async (amount: number) => {
+    if (!scannedClientId) return;
+
+    try {
+      await createTransactionMutation.mutateAsync({ clientId: scannedClientId, amount });
+      toast({
+        title: "Transaction validée",
+        description: `${amount.toFixed(2)}€ enregistré - ${(amount * 0.1).toFixed(2)}€ de cashback généré`,
+      });
+      setScannedClientId(null);
+      setView("dashboard");
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer la transaction",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleCancelTransaction = (id: string) => {
-    setTransactions(transactions.map((tx) =>
-      tx.id === id ? { ...tx, status: "cancelled" as const, canCancel: false } : tx
-    ));
-    toast({
-      title: "Transaction annulée",
-      description: "La transaction et le cashback associé ont été annulés",
-      variant: "destructive",
-    });
-  };
-
-  const handleLogout = () => {
-    console.log("Merchant logout triggered");
+  const handleCancelTransaction = async (id: string) => {
+    try {
+      const response = await cancelTransactionMutation.mutateAsync(id);
+      if (response.ok) {
+        toast({
+          title: "Transaction annulée",
+          description: "La transaction et le cashback associé ont été annulés",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      const errorMessage = error.message?.includes(":")
+        ? error.message.split(":").slice(1).join(":").trim()
+        : error.message || "Impossible d'annuler la transaction";
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   if (view === "statistics") {
     return <MerchantStatistics onBack={() => setView("dashboard")} />;
   }
 
+  const isLoading = merchantLoading || transactionsLoading;
+
   return (
     <div className="min-h-screen bg-background">
-      <Header title={merchantName} onLogout={handleLogout} />
+      <Header title={merchantName} />
 
       <main className="container max-w-lg px-4 py-6 space-y-6">
         {view === "dashboard" && (
@@ -94,10 +148,16 @@ export default function MerchantDashboard() {
               </CardContent>
             </Card>
 
-            <MerchantTransactionList
-              transactions={transactions}
-              onCancelTransaction={handleCancelTransaction}
-            />
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <MerchantTransactionList
+                transactions={transactions}
+                onCancelTransaction={handleCancelTransaction}
+              />
+            )}
 
             <Button
               variant="outline"

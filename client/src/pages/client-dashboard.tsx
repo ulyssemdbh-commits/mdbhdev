@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/shared/Header";
 import { QRCodeDisplay } from "@/components/client/QRCodeDisplay";
 import { BalanceCard } from "@/components/client/BalanceCard";
@@ -7,31 +8,15 @@ import { BonPlanCard, type BonPlan } from "@/components/client/BonPlanCard";
 import { MerchantCard, type Merchant } from "@/components/client/MerchantCard";
 import { MerchantFilters, type CategoryFilter } from "@/components/client/MerchantFilters";
 import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavigation";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
+import type { User, Merchant as APIMerchant, CashbackBalance } from "@shared/schema";
 
-// todo: remove mock functionality
-const mockTransactions: Transaction[] = [
-  { id: "1", merchantName: "Boulangerie Antoine", amount: 2.0, status: "pending", date: "Aujourd'hui, 10:32" },
-  { id: "2", merchantName: "Café Marcel", amount: 3.0, status: "used", date: "Hier, 14:15" },
-  { id: "3", merchantName: "Supermarché Bio", amount: 5.4, status: "earned", date: "5 déc., 18:45" },
-  { id: "4", merchantName: "Pharmacie Centrale", amount: 1.2, status: "earned", date: "3 déc., 09:20" },
-];
-
-// todo: remove mock functionality
+// todo: remove mock functionality for bons plans
 const mockBonsPlans: BonPlan[] = [
   { id: "1", title: "-20% sur les viennoiseries", description: "Profitez de 20% de réduction sur toutes les viennoiseries du matin", merchantName: "Boulangerie Antoine", category: "Alimentation", discount: "-20%", validUntil: "31 déc." },
   { id: "2", title: "Café offert", description: "Un café offert pour tout achat d'un petit-déjeuner complet", merchantName: "Café Marcel", category: "Restauration", discount: "Offert", validUntil: "15 déc." },
   { id: "3", title: "-10% sur les produits frais", description: "Réduction sur tous les fruits et légumes de saison", merchantName: "Supermarché Bio", category: "Alimentation", discount: "-10%", validUntil: "20 déc." },
-];
-
-// todo: remove mock functionality
-const mockMerchants: Merchant[] = [
-  { id: "1", name: "Boulangerie Antoine", category: "Alimentation", address: "12 rue du Commerce", distance: "150m", visited: true, hasBonsPlan: true },
-  { id: "2", name: "Café Marcel", category: "Restauration", address: "5 place de la Mairie", distance: "200m", visited: true, hasBonsPlan: true },
-  { id: "3", name: "Supermarché Bio", category: "Alimentation", address: "28 avenue Jean Jaurès", distance: "350m", visited: false, hasBonsPlan: true },
-  { id: "4", name: "Pharmacie Centrale", category: "Santé", address: "1 rue de la Santé", distance: "100m", visited: true },
-  { id: "5", name: "Fleuriste Rose", category: "Services", address: "15 rue des Fleurs", distance: "400m", visited: false },
-  { id: "6", name: "Librairie du Coin", category: "Services", address: "8 rue Victor Hugo", distance: "250m", visited: true },
 ];
 
 export default function ClientDashboard() {
@@ -41,13 +26,75 @@ export default function ClientDashboard() {
   const [bonsPlansSearchQuery, setBonsPlansSearchQuery] = useState("");
   const [bonsPlansCategory, setBonsPlansCategory] = useState<CategoryFilter>("all");
 
-  // todo: remove mock functionality
-  const clientId = "CLT-7X9K2M";
-  const clientName = "Marie Dupont";
-  const availableBalance = 12.40;
-  const pendingBalance = 2.00;
+  const { user } = useAuth();
+  const typedUser = user as User | undefined;
 
-  const filteredMerchants = mockMerchants.filter((m) => {
+  const { data: merchantsRaw, isLoading: merchantsLoading } = useQuery<APIMerchant[] | null>({
+    queryKey: ["/api/merchants"],
+  });
+  const merchants = merchantsRaw || [];
+
+  const { data: cashbackBalancesRaw, isLoading: balancesLoading } = useQuery<CashbackBalance[] | null>({
+    queryKey: ["/api/cashback/balances"],
+  });
+  const cashbackBalances = cashbackBalancesRaw || [];
+
+  const { data: transactionsRaw, isLoading: transactionsLoading } = useQuery<any[] | null>({
+    queryKey: ["/api/transactions/client"],
+  });
+  const transactionsData = transactionsRaw || [];
+
+  // Calculate total balances
+  const availableBalance = cashbackBalances.reduce(
+    (sum, b) => sum + parseFloat(b.availableBalance || "0"),
+    0
+  );
+  const pendingBalance = cashbackBalances.reduce(
+    (sum, b) => sum + parseFloat(b.pendingBalance || "0"),
+    0
+  );
+
+  // Transform API transactions to display format
+  const transactions: Transaction[] = transactionsData.map((tx: any) => {
+    const merchant = merchants.find((m) => m.id === tx.merchantId);
+    const cashbackAmount = parseFloat(tx.cashbackAmount || "0");
+    
+    // Determine status: pending (7-day lock), earned (available), used (spent), cancelled
+    let displayStatus: "pending" | "earned" | "used";
+    if (tx.status === "cancelled") {
+      displayStatus = "used";
+    } else if (tx.status === "pending") {
+      displayStatus = "pending";
+    } else {
+      displayStatus = "earned";
+    }
+
+    return {
+      id: tx.id,
+      merchantName: merchant?.name || "Commerçant",
+      amount: cashbackAmount,
+      status: displayStatus,
+      date: new Date(tx.createdAt).toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  });
+
+  // Transform merchants for display
+  const displayMerchants: Merchant[] = merchants.map((m) => ({
+    id: m.id,
+    name: m.name,
+    category: m.category,
+    address: m.address || "",
+    distance: "",
+    visited: false,
+    hasBonsPlan: false,
+  }));
+
+  const filteredMerchants = displayMerchants.filter((m) => {
     const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === "all" || m.category.toLowerCase() === categoryFilter;
     return matchesSearch && matchesCategory;
@@ -60,13 +107,17 @@ export default function ClientDashboard() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleLogout = () => {
-    console.log("Logout triggered");
-  };
+  const clientName = typedUser
+    ? `${typedUser.firstName || ""} ${typedUser.lastName || ""}`.trim() || typedUser.email || "Client"
+    : "Client";
+
+  const clientId = typedUser?.id || "CLT-UNKNOWN";
+
+  const isLoading = merchantsLoading || balancesLoading || transactionsLoading;
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="REV" onLogout={handleLogout} />
+      <Header title="REV" />
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="container max-w-lg px-4 py-6">
@@ -74,7 +125,13 @@ export default function ClientDashboard() {
           <div className="space-y-6">
             <QRCodeDisplay clientId={clientId} clientName={clientName} />
             <BalanceCard available={availableBalance} pending={pendingBalance} />
-            <TransactionList transactions={mockTransactions} />
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <TransactionList transactions={transactions} />
+            )}
           </div>
         )}
 
@@ -121,15 +178,27 @@ export default function ClientDashboard() {
               onCategoryChange={setCategoryFilter}
               onProximitySort={() => console.log("Sort by proximity")}
             />
-            <div className="space-y-3">
-              {filteredMerchants.map((merchant) => (
-                <MerchantCard
-                  key={merchant.id}
-                  merchant={merchant}
-                  onClick={() => console.log("View merchant:", merchant.id)}
-                />
-              ))}
-            </div>
+            {merchantsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredMerchants.length > 0 ? (
+                  filteredMerchants.map((merchant) => (
+                    <MerchantCard
+                      key={merchant.id}
+                      merchant={merchant}
+                      onClick={() => console.log("View merchant:", merchant.id)}
+                    />
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Aucun commerçant trouvé
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
