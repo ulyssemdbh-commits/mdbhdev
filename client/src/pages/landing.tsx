@@ -2,6 +2,7 @@ import { MapPin, Store, Users, Wallet, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { Link } from "wouter";
 
 export default function LandingPage() {
   const features = [
@@ -28,10 +29,6 @@ export default function LandingPage() {
     "Bons plans exclusifs chaque semaine",
     "Application simple et gratuite",
   ];
-
-  const handleLogin = () => {
-    window.location.href = "/api/login";
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,14 +86,15 @@ export default function LandingPage() {
         </section>
 
         <section className="space-y-4 pt-4">
-          <Button
-            className="w-full gap-2"
-            size="lg"
-            onClick={handleLogin}
-            data-testid="button-login"
-          >
-            Se connecter / S'inscrire
-          </Button>
+          <Link href="/login">
+            <Button
+              className="w-full gap-2"
+              size="lg"
+              data-testid="button-login"
+            >
+              Se connecter / S'inscrire
+            </Button>
+          </Link>
           <p className="text-center text-sm text-muted-foreground">
             Connectez-vous pour accéder à votre espace personnel
           </p>

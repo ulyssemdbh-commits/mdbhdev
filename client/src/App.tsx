@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
+import LoginPage from "@/pages/login";
 import ClientDashboard from "@/pages/client-dashboard";
 import MerchantDashboard from "@/pages/merchant-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -68,6 +69,7 @@ function App() {
         <Toaster />
         <Switch>
           <Route path="/" component={Router} />
+          <Route path="/login" component={LoginPage} />
           <Route path="/admin">
             <ProtectedRoute allowedRoles={["admin"]}>
               <AdminDashboard />
