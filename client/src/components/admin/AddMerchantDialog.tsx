@@ -133,7 +133,7 @@ export function AddMerchantDialog({ onSubmit, isLoading }: AddMerchantDialogProp
                         <SelectValue placeholder="Sélectionnez une catégorie" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="max-h-[240px]">
                       {categoriesLoading ? (
                         <div className="flex justify-center py-2">
                           <Loader2 className="w-4 h-4 animate-spin" />

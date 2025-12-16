@@ -350,7 +350,7 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
                               <SelectTrigger data-testid="select-edit-category">
                                 <SelectValue placeholder="Sélectionner" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="max-h-[240px]">
                                 {categoryList.map((cat) => (
                                   <SelectItem key={cat.id} value={cat.name}>
                                     {cat.name}

@@ -98,7 +98,7 @@ export function EditMerchantDialog({ merchant, open, onOpenChange, onSave, isPen
                 <SelectTrigger data-testid="select-edit-category">
                   <SelectValue placeholder="Sélectionner une catégorie" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[240px]">
                   {categoriesLoading ? (
                     <div className="flex justify-center py-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
