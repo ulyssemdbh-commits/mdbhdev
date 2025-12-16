@@ -4,6 +4,7 @@ import { Header } from "@/components/shared/Header";
 import { AccountSection } from "@/components/shared/AccountSection";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { useAuth } from "@/hooks/useAuth";
+import { useSocket } from "@/hooks/useSocket";
 import { MerchantManagement, type AdminMerchant } from "@/components/admin/MerchantManagement";
 import { CommissionTracker, type WeeklyCommission } from "@/components/admin/CommissionTracker";
 import { AddMerchantDialog } from "@/components/admin/AddMerchantDialog";
@@ -28,6 +29,7 @@ interface AdminStatsData {
 export default function AdminDashboard() {
   const { toast } = useToast();
   const { user } = useAuth();
+  useSocket("admin");
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [deletingMerchant, setDeletingMerchant] = useState<Merchant | null>(null);
   const [viewingMerchantId, setViewingMerchantId] = useState<string | null>(null);

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { emitTransactionUpdate, emitStatsUpdate } from "./socket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -142,6 +143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         availableBalance: currentAvailable.toFixed(2),
       });
 
+      emitTransactionUpdate(transaction);
+      emitStatsUpdate();
+      
       res.json(transaction);
     } catch (error) {
       console.error("Error creating transaction:", error);
@@ -178,6 +182,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const cancelled = await storage.cancelTransaction(req.params.id);
+      
+      emitTransactionUpdate(cancelled);
+      emitStatsUpdate();
+      
       res.json(cancelled);
     } catch (error) {
       console.error("Error cancelling transaction:", error);

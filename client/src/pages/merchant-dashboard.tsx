@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useSocket } from "@/hooks/useSocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Merchant, Transaction } from "@shared/schema";
 
@@ -29,6 +30,7 @@ export default function MerchantDashboard() {
   const [scannedClientId, setScannedClientId] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  useSocket("merchant");
 
   const { data: clientCashbackInfo } = useQuery<ClientCashbackInfo>({
     queryKey: ["/api/merchant/client", scannedClientId, "cashback"],
