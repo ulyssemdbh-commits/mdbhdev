@@ -34,6 +34,18 @@ export function useSocket(role: string) {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
     });
 
+    socket.on("merchant-update", () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/merchants"] });
+    });
+
+    socket.on("client-update", () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    });
+
     socket.on("disconnect", () => {
       console.log("Socket disconnected");
     });

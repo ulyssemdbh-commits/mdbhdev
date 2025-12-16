@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { emitTransactionUpdate, emitStatsUpdate } from "./socket";
+import { emitTransactionUpdate, emitStatsUpdate, emitMerchantUpdate, emitClientUpdate } from "./socket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -479,6 +479,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         role,
       });
+      emitClientUpdate();
+      emitStatsUpdate();
       res.json(updated);
     } catch (error) {
       console.error("Error updating client:", error);
@@ -506,6 +508,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteUser(req.params.id);
+      emitClientUpdate();
+      emitStatsUpdate();
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting client:", error);
@@ -556,6 +560,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.body.userId || userId,
       };
       const merchant = await storage.createMerchant(merchantData);
+      emitMerchantUpdate();
+      emitStatsUpdate();
       res.json(merchant);
     } catch (error) {
       console.error("Error creating merchant:", error);
@@ -575,6 +581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
       }
+      emitMerchantUpdate();
+      emitStatsUpdate();
       res.json(merchant);
     } catch (error) {
       console.error("Error updating merchant:", error);
@@ -594,6 +602,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) {
         return res.status(404).json({ message: "Merchant not found" });
       }
+      emitMerchantUpdate();
+      emitStatsUpdate();
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting merchant:", error);
