@@ -4,6 +4,7 @@ import {
   transactions,
   cashbackBalances,
   cashbackEntries,
+  cashbackTransfers,
   type User,
   type UpsertUser,
   type Merchant,
@@ -14,6 +15,8 @@ import {
   type InsertCashbackBalance,
   type CashbackEntry,
   type InsertCashbackEntry,
+  type CashbackTransfer,
+  type InsertCashbackTransfer,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
@@ -51,6 +54,11 @@ export interface IStorage {
   getPendingCashbackEntries(): Promise<CashbackEntry[]>;
   createCashbackEntry(entry: InsertCashbackEntry): Promise<CashbackEntry>;
   unlockCashbackEntry(id: string): Promise<CashbackEntry | undefined>;
+  
+  // Cashback transfer operations
+  createCashbackTransfer(transfer: InsertCashbackTransfer): Promise<CashbackTransfer>;
+  getCashbackTransfersByUser(userId: string): Promise<CashbackTransfer[]>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   
   // Admin operations
   getAdminStats(): Promise<{
@@ -242,6 +250,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cashbackEntries.id, id))
       .returning();
     return unlocked;
+  }
+
+  // Cashback transfer operations
+  async createCashbackTransfer(transfer: InsertCashbackTransfer): Promise<CashbackTransfer> {
+    const [created] = await db.insert(cashbackTransfers).values(transfer).returning();
+    return created;
+  }
+
+  async getCashbackTransfersByUser(userId: string): Promise<CashbackTransfer[]> {
+    return db
+      .select()
+      .from(cashbackTransfers)
+      .where(
+        sql`${cashbackTransfers.fromUserId} = ${userId} OR ${cashbackTransfers.toUserId} = ${userId}`
+      )
+      .orderBy(desc(cashbackTransfers.createdAt));
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
   }
 
   // Admin operations

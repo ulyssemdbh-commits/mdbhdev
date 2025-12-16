@@ -285,6 +285,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cashback Transfers API
+  app.get('/api/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        profileImageUrl: user.profileImageUrl,
+      });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.post('/api/cashback/transfer', isAuthenticated, async (req: any, res) => {
+    try {
+      const fromUserId = req.user.claims.sub;
+      const { toUserId, merchantId, amount } = req.body;
+
+      if (!toUserId || !merchantId || !amount) {
+        return res.status(400).json({ message: "toUserId, merchantId, and amount are required" });
+      }
+
+      if (fromUserId === toUserId) {
+        return res.status(400).json({ message: "Cannot transfer cashback to yourself" });
+      }
+
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        return res.status(400).json({ message: "Invalid transfer amount" });
+      }
+
+      // Check sender has enough balance for this merchant
+      const senderBalance = await storage.getCashbackBalance(fromUserId, merchantId);
+      if (!senderBalance) {
+        return res.status(400).json({ message: "No cashback balance for this merchant" });
+      }
+
+      const senderAvailable = parseFloat(senderBalance.availableBalance);
+      if (amountNum > senderAvailable) {
+        return res.status(400).json({ message: "Insufficient cashback balance" });
+      }
+
+      // Verify recipient exists
+      const recipient = await storage.getUser(toUserId);
+      if (!recipient) {
+        return res.status(404).json({ message: "Recipient user not found" });
+      }
+
+      // Deduct from sender
+      await storage.upsertCashbackBalance({
+        userId: fromUserId,
+        merchantId,
+        availableBalance: (senderAvailable - amountNum).toFixed(2),
+        pendingBalance: senderBalance.pendingBalance,
+      });
+
+      // Add to recipient
+      const recipientBalance = await storage.getCashbackBalance(toUserId, merchantId);
+      const recipientAvailable = parseFloat(recipientBalance?.availableBalance || "0");
+      const recipientPending = recipientBalance?.pendingBalance || "0.00";
+
+      await storage.upsertCashbackBalance({
+        userId: toUserId,
+        merchantId,
+        availableBalance: (recipientAvailable + amountNum).toFixed(2),
+        pendingBalance: recipientPending,
+      });
+
+      // Record the transfer
+      const transfer = await storage.createCashbackTransfer({
+        fromUserId,
+        toUserId,
+        merchantId,
+        amount: amountNum.toFixed(2),
+        status: "completed",
+      });
+
+      res.json(transfer);
+    } catch (error) {
+      console.error("Error transferring cashback:", error);
+      res.status(500).json({ message: "Failed to transfer cashback" });
+    }
+  });
+
+  app.get('/api/cashback/transfers', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transfers = await storage.getCashbackTransfersByUser(userId);
+      res.json(transfers);
+    } catch (error) {
+      console.error("Error fetching cashback transfers:", error);
+      res.status(500).json({ message: "Failed to fetch transfers" });
+    }
+  });
+
   // Admin API - Get stats for admin dashboard
   app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
     try {
