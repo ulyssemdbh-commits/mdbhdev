@@ -11,6 +11,29 @@ import MerchantDashboard from "@/pages/merchant-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import { Loader2 } from "lucide-react";
 
+function ProtectedRoute({ allowedRoles, children }: { allowedRoles: string[], children: React.ReactNode }) {
+  const { user, isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LandingPage />;
+  }
+
+  const role = (user as any)?.role || "client";
+  if (!allowedRoles.includes(role)) {
+    return <NotFound />;
+  }
+
+  return <>{children}</>;
+}
+
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
 
@@ -26,7 +49,6 @@ function Router() {
     return <LandingPage />;
   }
 
-  // Route based on user role
   const role = (user as any)?.role || "client";
 
   switch (role) {
@@ -46,6 +68,21 @@ function App() {
         <Toaster />
         <Switch>
           <Route path="/" component={Router} />
+          <Route path="/admin">
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/merchant">
+            <ProtectedRoute allowedRoles={["merchant"]}>
+              <MerchantDashboard />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/client">
+            <ProtectedRoute allowedRoles={["client"]}>
+              <ClientDashboard />
+            </ProtectedRoute>
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </TooltipProvider>

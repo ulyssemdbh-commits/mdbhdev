@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Check, X, Eye, Tag } from "lucide-react";
+import { Search, Check, X, Eye, Tag, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ interface MerchantManagementProps {
   onValidate?: (id: string) => void;
   onSuspend?: (id: string) => void;
   onViewDetails?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 const statusConfig = {
@@ -42,6 +44,8 @@ export function MerchantManagement({
   onValidate,
   onSuspend,
   onViewDetails,
+  onEdit,
+  onDelete,
 }: MerchantManagementProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -138,6 +142,27 @@ export function MerchantManagement({
                           data-testid={`button-view-${merchant.id}`}
                         >
                           <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {onEdit && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onEdit(merchant.id)}
+                          data-testid={`button-edit-${merchant.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => onDelete(merchant.id)}
+                          data-testid={`button-delete-${merchant.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
                     </div>

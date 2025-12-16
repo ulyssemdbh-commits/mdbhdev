@@ -334,6 +334,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/admin/merchants/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const deleted = await storage.deleteMerchant(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting merchant:", error);
+      res.status(500).json({ message: "Failed to delete merchant" });
+    }
+  });
+
+  app.get('/api/admin/merchants/:id/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const merchant = await storage.getMerchant(req.params.id);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+
+      const transactions = await storage.getTransactionsByMerchant(req.params.id);
+      const completedTxs = transactions.filter(tx => tx.status === "completed");
+      
+      const totalSales = completedTxs.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+      const totalCashback = completedTxs.reduce((sum, tx) => sum + parseFloat(tx.cashbackAmount || "0"), 0);
+      const totalCommission = completedTxs.reduce((sum, tx) => sum + parseFloat(tx.commissionAmount || "0"), 0);
+
+      const monthlyData: Record<string, { sales: number; transactions: number }> = {};
+      completedTxs.forEach(tx => {
+        const month = new Date(tx.createdAt).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+        if (!monthlyData[month]) {
+          monthlyData[month] = { sales: 0, transactions: 0 };
+        }
+        monthlyData[month].sales += parseFloat(tx.amount);
+        monthlyData[month].transactions += 1;
+      });
+
+      res.json({
+        merchant,
+        totalTransactions: completedTxs.length,
+        totalSales,
+        totalCashback,
+        totalCommission,
+        monthlyData: Object.entries(monthlyData).map(([month, data]) => ({
+          month,
+          ...data,
+        })),
+        recentTransactions: transactions.slice(0, 10),
+      });
+    } catch (error) {
+      console.error("Error fetching merchant stats:", error);
+      res.status(500).json({ message: "Failed to fetch merchant stats" });
+    }
+  });
+
   // Unlock pending cashback entries (to be called by cron job)
   app.post('/api/cron/unlock-cashback', async (req, res) => {
     try {

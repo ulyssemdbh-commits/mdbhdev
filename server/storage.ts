@@ -31,6 +31,7 @@ export interface IStorage {
   getMerchantsByCategory(category: string): Promise<Merchant[]>;
   createMerchant(merchant: InsertMerchant): Promise<Merchant>;
   updateMerchant(id: string, merchant: Partial<InsertMerchant>): Promise<Merchant | undefined>;
+  deleteMerchant(id: string): Promise<boolean>;
   
   // Transaction operations
   getTransaction(id: string): Promise<Transaction | undefined>;
@@ -128,6 +129,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(merchants.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteMerchant(id: string): Promise<boolean> {
+    const result = await db
+      .delete(merchants)
+      .where(eq(merchants.id, id));
+    return true;
   }
 
   // Transaction operations

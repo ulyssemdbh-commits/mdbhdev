@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/shared/Header";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { MerchantManagement, type AdminMerchant } from "@/components/admin/MerchantManagement";
 import { CommissionTracker, type WeeklyCommission } from "@/components/admin/CommissionTracker";
 import { AddMerchantDialog } from "@/components/admin/AddMerchantDialog";
+import { EditMerchantDialog } from "@/components/admin/EditMerchantDialog";
+import { DeleteMerchantDialog } from "@/components/admin/DeleteMerchantDialog";
+import { MerchantDetailsDialog } from "@/components/admin/MerchantDetailsDialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
@@ -21,6 +25,9 @@ interface AdminStatsData {
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
+  const [deletingMerchant, setDeletingMerchant] = useState<Merchant | null>(null);
+  const [viewingMerchantId, setViewingMerchantId] = useState<string | null>(null);
 
   const { data: statsRaw, isLoading: statsLoading } = useQuery<AdminStatsData | null>({
     queryKey: ["/api/admin/stats"],
@@ -50,6 +57,29 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/merchants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setEditingMerchant(null);
+    },
+  });
+
+  const deleteMerchantMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/admin/merchants/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setDeletingMerchant(null);
+      toast({
+        title: "Commerçant supprimé",
+        description: "Le commerçant a été supprimé définitivement",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le commerçant",
+        variant: "destructive",
+      });
     },
   });
 
@@ -155,7 +185,37 @@ export default function AdminDashboard() {
   };
 
   const handleViewDetails = (id: string) => {
-    console.log("View merchant details:", id);
+    setViewingMerchantId(id);
+  };
+
+  const handleEditMerchant = (id: string) => {
+    const merchant = merchants.find((m) => m.id === id);
+    if (merchant) {
+      setEditingMerchant(merchant);
+    }
+  };
+
+  const handleDeleteMerchant = (id: string) => {
+    const merchant = merchants.find((m) => m.id === id);
+    if (merchant) {
+      setDeletingMerchant(merchant);
+    }
+  };
+
+  const handleSaveEdit = async (id: string, data: Partial<Merchant>) => {
+    try {
+      await updateMerchantMutation.mutateAsync({ id, data });
+      toast({
+        title: "Modifications enregistrées",
+        description: "Les informations du commerçant ont été mises à jour",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer les modifications",
+        variant: "destructive",
+      });
+    }
   };
 
   const isLoading = statsLoading || merchantsLoading || txLoading;
@@ -267,10 +327,34 @@ export default function AdminDashboard() {
               onValidate={handleValidateMerchant}
               onSuspend={handleSuspendMerchant}
               onViewDetails={handleViewDetails}
+              onEdit={handleEditMerchant}
+              onDelete={handleDeleteMerchant}
             />
           </>
         )}
       </main>
+
+      <EditMerchantDialog
+        merchant={editingMerchant}
+        open={!!editingMerchant}
+        onOpenChange={(open) => !open && setEditingMerchant(null)}
+        onSave={handleSaveEdit}
+        isPending={updateMerchantMutation.isPending}
+      />
+
+      <DeleteMerchantDialog
+        merchantName={deletingMerchant?.name || ""}
+        open={!!deletingMerchant}
+        onOpenChange={(open) => !open && setDeletingMerchant(null)}
+        onConfirm={() => deletingMerchant && deleteMerchantMutation.mutate(deletingMerchant.id)}
+        isPending={deleteMerchantMutation.isPending}
+      />
+
+      <MerchantDetailsDialog
+        merchantId={viewingMerchantId}
+        open={!!viewingMerchantId}
+        onOpenChange={(open) => !open && setViewingMerchantId(null)}
+      />
     </div>
   );
 }
