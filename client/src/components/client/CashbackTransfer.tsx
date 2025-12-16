@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Camera, X, Keyboard, Send, ArrowLeft, Loader2, User, Store, Check } from "lucide-react";
+import { Camera, Keyboard, Send, ArrowLeft, Loader2, User, Store, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { BrowserQRCodeReader } from "@zxing/library";
 import type { CashbackBalance, Merchant } from "@shared/schema";
 
 interface RecipientInfo {
@@ -71,29 +72,38 @@ export function CashbackTransfer() {
   });
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
+    let codeReader: BrowserQRCodeReader | null = null;
+    let isActive = true;
 
-    const startCamera = async () => {
-      if (step !== "scan" || showManualInput) return;
+    const startScanning = async () => {
+      if (step !== "scan" || showManualInput || !videoRef.current) return;
 
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+        codeReader = new BrowserQRCodeReader();
+        await codeReader.decodeFromVideoDevice(
+          null,
+          videoRef.current,
+          (result, error) => {
+            if (result && isActive) {
+              codeReader?.reset();
+              handleScanResult(result.getText());
+            }
+          }
+        );
       } catch (err) {
-        console.log("Camera access denied or not available");
-        setShowManualInput(true);
+        console.log("Camera access denied or QR scanning not available");
+        if (isActive) {
+          setShowManualInput(true);
+        }
       }
     };
 
-    startCamera();
+    startScanning();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      isActive = false;
+      if (codeReader) {
+        codeReader.reset();
       }
     };
   }, [step, showManualInput]);

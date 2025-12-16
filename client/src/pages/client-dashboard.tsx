@@ -10,6 +10,7 @@ import { BonPlanCard, type BonPlan } from "@/components/client/BonPlanCard";
 import { MerchantCard, type Merchant } from "@/components/client/MerchantCard";
 import { MerchantFilters, type CategoryFilter } from "@/components/client/MerchantFilters";
 import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavigation";
+import { CashbackTransfer } from "@/components/client/CashbackTransfer";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import type { User, Merchant as APIMerchant, CashbackBalance } from "@shared/schema";
@@ -259,6 +260,26 @@ export default function ClientDashboard() {
                   )}
                 </motion.div>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === "partager" && (
+            <motion.div
+              key="partager"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={fadeInUp}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              <motion.h2 variants={fadeInUp} className="text-xl font-bold">Partager mon cashback</motion.h2>
+              <p className="text-sm text-muted-foreground">
+                Scannez le QR code d'un autre membre pour lui transférer du cashback
+              </p>
+              <motion.div variants={fadeInUp}>
+                <CashbackTransfer />
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
