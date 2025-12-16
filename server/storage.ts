@@ -72,6 +72,11 @@ export interface IStorage {
   getAllMerchantsWithStats(): Promise<any[]>;
   getAllMerchantsForAdmin(): Promise<Merchant[]>;
   getAllClients(): Promise<User[]>;
+  
+  // Admin CRUD operations
+  updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
+  adminCancelTransaction(id: string): Promise<Transaction | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -325,6 +330,35 @@ export class DatabaseStorage implements IStorage {
 
   async getAllClients(): Promise<User[]> {
     return db.select().from(users).where(eq(users.role, "client")).orderBy(desc(users.createdAt));
+  }
+
+  // Admin CRUD operations
+  async updateUser(id: string, data: Partial<User>): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    // Soft-delete by changing role to "archived" to preserve referential integrity
+    const [archived] = await db
+      .update(users)
+      .set({ role: "archived", updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return !!archived;
+  }
+
+  async adminCancelTransaction(id: string): Promise<Transaction | undefined> {
+    const [cancelled] = await db
+      .update(transactions)
+      .set({ status: "cancelled", cancelledAt: new Date() })
+      .where(eq(transactions.id, id))
+      .returning();
+    return cancelled;
   }
 }
 

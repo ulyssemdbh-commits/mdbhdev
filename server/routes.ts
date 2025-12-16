@@ -453,6 +453,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin API - Update client
+  app.patch('/api/admin/clients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      // Prevent admin from modifying themselves through this endpoint
+      if (req.params.id === userId) {
+        return res.status(400).json({ message: "Cannot modify your own account through this endpoint" });
+      }
+
+      const { firstName, lastName, email, role } = req.body;
+      const updated = await storage.updateUser(req.params.id, {
+        firstName,
+        lastName,
+        email,
+        role,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating client:", error);
+      res.status(500).json({ message: "Failed to update client" });
+    }
+  });
+
+  // Admin API - Delete client
+  app.delete('/api/admin/clients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      // Prevent admin from deleting themselves
+      if (req.params.id === userId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      await storage.deleteUser(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      res.status(500).json({ message: "Failed to delete client" });
+    }
+  });
+
+  // Admin API - Cancel transaction (admin override, no time limit)
+  app.post('/api/admin/transactions/:id/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const transaction = await storage.getTransaction(req.params.id);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      if (transaction.status === "cancelled") {
+        return res.status(400).json({ message: "Transaction already cancelled" });
+      }
+
+      const cancelled = await storage.adminCancelTransaction(req.params.id);
+      
+      emitTransactionUpdate(cancelled);
+      emitStatsUpdate();
+      
+      res.json(cancelled);
+    } catch (error) {
+      console.error("Error cancelling transaction:", error);
+      res.status(500).json({ message: "Failed to cancel transaction" });
+    }
+  });
+
   app.post('/api/admin/merchants', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
