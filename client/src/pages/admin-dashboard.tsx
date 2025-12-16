@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/shared/Header";
+import { AccountSection } from "@/components/shared/AccountSection";
 import { AdminStats } from "@/components/admin/AdminStats";
+import { useAuth } from "@/hooks/useAuth";
 import { MerchantManagement, type AdminMerchant } from "@/components/admin/MerchantManagement";
 import { CommissionTracker, type WeeklyCommission } from "@/components/admin/CommissionTracker";
 import { AddMerchantDialog } from "@/components/admin/AddMerchantDialog";
@@ -25,6 +27,7 @@ interface AdminStatsData {
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [deletingMerchant, setDeletingMerchant] = useState<Merchant | null>(null);
   const [viewingMerchantId, setViewingMerchantId] = useState<string | null>(null);
@@ -339,6 +342,18 @@ export default function AdminDashboard() {
               onViewDetails={handleViewDetails}
               onEdit={handleEditMerchant}
               onDelete={handleDeleteMerchant}
+            />
+
+            <AccountSection 
+              user={{
+                id: (user as any)?.id,
+                email: (user as any)?.email,
+                firstName: (user as any)?.firstName,
+                lastName: (user as any)?.lastName,
+                profileImageUrl: (user as any)?.profileImageUrl,
+                role: "admin",
+              }} 
+              showRole 
             />
           </>
         )}

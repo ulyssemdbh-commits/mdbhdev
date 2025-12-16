@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Camera, BarChart3, Loader2 } from "lucide-react";
 import { Header } from "@/components/shared/Header";
+import { AccountSection } from "@/components/shared/AccountSection";
 import { QRScanner } from "@/components/merchant/QRScanner";
 import { TransactionForm } from "@/components/merchant/TransactionForm";
 import { MerchantTransactionList, type MerchantTransaction } from "@/components/merchant/MerchantTransactionList";
@@ -168,6 +169,18 @@ export default function MerchantDashboard() {
               <BarChart3 className="w-5 h-5" />
               Voir les statistiques détaillées
             </Button>
+
+            <AccountSection 
+              user={{
+                id: (user as any)?.id,
+                email: (user as any)?.email,
+                firstName: (user as any)?.firstName,
+                lastName: (user as any)?.lastName,
+                profileImageUrl: (user as any)?.profileImageUrl,
+                role: "merchant",
+              }} 
+              showRole 
+            />
           </>
         )}
 

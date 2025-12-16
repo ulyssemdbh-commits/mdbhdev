@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/shared/Header";
+import { AccountSection } from "@/components/shared/AccountSection";
 import { QRCodeDisplay } from "@/components/client/QRCodeDisplay";
 import { BalanceCard } from "@/components/client/BalanceCard";
 import { TransactionList, type Transaction } from "@/components/client/TransactionList";
@@ -162,6 +163,9 @@ export default function ClientDashboard() {
                   <TransactionList transactions={transactions} />
                 </motion.div>
               )}
+              <motion.div variants={fadeInUp}>
+                <AccountSection user={typedUser || null} />
+              </motion.div>
             </motion.div>
           )}
 
