@@ -649,6 +649,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Merchant Categories - Public route for active categories
+  app.get('/api/merchant-categories', async (req, res) => {
+    try {
+      const categories = await storage.getActiveCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  // Admin Category Management
+  app.get('/api/admin/merchant-categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const categories = await storage.getCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.post('/api/admin/merchant-categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { name, description, displayOrder, isActive } = req.body;
+      if (!name || name.trim().length < 2) {
+        return res.status(400).json({ message: "Category name must be at least 2 characters" });
+      }
+
+      const category = await storage.createCategory({
+        name: name.trim(),
+        description: description || null,
+        displayOrder: displayOrder || "0",
+        isActive: isActive !== false,
+      });
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.patch('/api/admin/merchant-categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { name, description, displayOrder, isActive } = req.body;
+      const updateData: any = {};
+      
+      if (name !== undefined) {
+        if (name.trim().length < 2) {
+          return res.status(400).json({ message: "Category name must be at least 2 characters" });
+        }
+        updateData.name = name.trim();
+      }
+      if (description !== undefined) updateData.description = description;
+      if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+      const category = await storage.updateCategory(req.params.id, updateData);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete('/api/admin/merchant-categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Check if any merchants are using this category
+      const allMerchants = await storage.getMerchants();
+      const category = await storage.getCategory(req.params.id);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      const merchantsUsingCategory = allMerchants.filter(m => m.category === category.name);
+      if (merchantsUsingCategory.length > 0) {
+        return res.status(400).json({ 
+          message: `Cannot delete category: ${merchantsUsingCategory.length} merchant(s) are using it` 
+        });
+      }
+
+      const deleted = await storage.deleteCategory(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
   // Unlock pending cashback entries (to be called by cron job)
   app.post('/api/cron/unlock-cashback', async (req, res) => {
     try {

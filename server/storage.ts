@@ -5,6 +5,7 @@ import {
   cashbackBalances,
   cashbackEntries,
   cashbackTransfers,
+  merchantCategories,
   type User,
   type UpsertUser,
   type Merchant,
@@ -17,6 +18,8 @@ import {
   type InsertCashbackEntry,
   type CashbackTransfer,
   type InsertCashbackTransfer,
+  type MerchantCategory,
+  type InsertMerchantCategory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
@@ -77,6 +80,14 @@ export interface IStorage {
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   adminCancelTransaction(id: string): Promise<Transaction | undefined>;
+  
+  // Merchant category operations
+  getCategories(): Promise<MerchantCategory[]>;
+  getActiveCategories(): Promise<MerchantCategory[]>;
+  getCategory(id: string): Promise<MerchantCategory | undefined>;
+  createCategory(category: InsertMerchantCategory): Promise<MerchantCategory>;
+  updateCategory(id: string, data: Partial<InsertMerchantCategory>): Promise<MerchantCategory | undefined>;
+  deleteCategory(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -359,6 +370,44 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactions.id, id))
       .returning();
     return cancelled;
+  }
+
+  // Merchant category operations
+  async getCategories(): Promise<MerchantCategory[]> {
+    return db.select().from(merchantCategories).orderBy(merchantCategories.displayOrder);
+  }
+
+  async getActiveCategories(): Promise<MerchantCategory[]> {
+    return db.select().from(merchantCategories)
+      .where(eq(merchantCategories.isActive, true))
+      .orderBy(merchantCategories.displayOrder);
+  }
+
+  async getCategory(id: string): Promise<MerchantCategory | undefined> {
+    const [category] = await db.select().from(merchantCategories).where(eq(merchantCategories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertMerchantCategory): Promise<MerchantCategory> {
+    const [created] = await db.insert(merchantCategories).values(category).returning();
+    return created;
+  }
+
+  async updateCategory(id: string, data: Partial<InsertMerchantCategory>): Promise<MerchantCategory | undefined> {
+    const [updated] = await db
+      .update(merchantCategories)
+      .set(data)
+      .where(eq(merchantCategories.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    const [deleted] = await db
+      .delete(merchantCategories)
+      .where(eq(merchantCategories.id, id))
+      .returning();
+    return !!deleted;
   }
 }
 

@@ -13,7 +13,9 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { User, Merchant, Transaction } from "@shared/schema";
+import type { User, Merchant, Transaction, MerchantCategory } from "@shared/schema";
+import { Switch } from "@/components/ui/switch";
+import { Plus } from "lucide-react";
 
 interface ClientsListDialogProps {
   open: boolean;
@@ -247,6 +249,11 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
     enabled: open,
   });
 
+  const { data: categoryList = [] } = useQuery<MerchantCategory[]>({
+    queryKey: ["/api/merchant-categories"],
+    enabled: open,
+  });
+
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<Merchant> }) => {
       return apiRequest("PATCH", `/api/admin/merchants/${data.id}`, data.updates);
@@ -336,11 +343,21 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
                           </div>
                           <div>
                             <Label className="text-xs">Catégorie</Label>
-                            <Input
-                              value={editForm.category}
-                              onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                              data-testid="input-edit-category"
-                            />
+                            <Select 
+                              value={editForm.category} 
+                              onValueChange={(v) => setEditForm({ ...editForm, category: v })}
+                            >
+                              <SelectTrigger data-testid="select-edit-category">
+                                <SelectValue placeholder="Sélectionner" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categoryList.map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.name}>
+                                    {cat.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -700,5 +717,342 @@ export function CommissionsListDialog({ open, onOpenChange }: CommissionsListDia
         </ScrollArea>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface CategoriesListDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function CategoriesListDialog({ open, onOpenChange }: CategoriesListDialogProps) {
+  const { toast } = useToast();
+  const [editingCategory, setEditingCategory] = useState<MerchantCategory | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<MerchantCategory | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", description: "", displayOrder: "0", isActive: true });
+
+  const { data: categories = [], isLoading } = useQuery<MerchantCategory[]>({
+    queryKey: ["/api/admin/merchant-categories"],
+    enabled: open,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; displayOrder: string; isActive: boolean }) => {
+      return apiRequest("POST", "/api/admin/merchant-categories", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/merchant-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/merchant-categories"] });
+      setIsCreating(false);
+      setEditForm({ name: "", description: "", displayOrder: "0", isActive: true });
+      toast({ title: "Catégorie créée avec succès" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string; updates: Partial<MerchantCategory> }) => {
+      return apiRequest("PATCH", `/api/admin/merchant-categories/${data.id}`, data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/merchant-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/merchant-categories"] });
+      setEditingCategory(null);
+      toast({ title: "Catégorie modifiée avec succès" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/admin/merchant-categories/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/merchant-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/merchant-categories"] });
+      setDeletingCategory(null);
+      toast({ title: "Catégorie supprimée avec succès" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const startEdit = (category: MerchantCategory) => {
+    setEditForm({
+      name: category.name,
+      description: category.description || "",
+      displayOrder: category.displayOrder || "0",
+      isActive: category.isActive,
+    });
+    setEditingCategory(category);
+  };
+
+  const saveEdit = () => {
+    if (!editingCategory) return;
+    updateMutation.mutate({
+      id: editingCategory.id,
+      updates: editForm,
+    });
+  };
+
+  const saveCreate = () => {
+    if (!editForm.name.trim()) {
+      toast({ title: "Erreur", description: "Le nom est requis", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate(editForm);
+  };
+
+  const startCreate = () => {
+    setEditForm({ name: "", description: "", displayOrder: "0", isActive: true });
+    setIsCreating(true);
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Store className="w-5 h-5 text-blue-600" />
+              Catégories de commerçants ({categories.length})
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex justify-end mb-2">
+            <Button onClick={startCreate} size="sm" data-testid="button-create-category">
+              <Plus className="w-4 h-4 mr-1" />
+              Nouvelle catégorie
+            </Button>
+          </div>
+
+          <ScrollArea className="max-h-[60vh]">
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-3 pr-4">
+                {isCreating && (
+                  <div className="p-4 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs">Nom de la catégorie</Label>
+                        <Input
+                          value={editForm.name}
+                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                          placeholder="Ex: Boulangerie"
+                          data-testid="input-new-category-name"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Description</Label>
+                        <Input
+                          value={editForm.description}
+                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                          placeholder="Description optionnelle"
+                          data-testid="input-new-category-description"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Ordre d'affichage</Label>
+                          <Input
+                            type="number"
+                            value={editForm.displayOrder}
+                            onChange={(e) => setEditForm({ ...editForm, displayOrder: e.target.value })}
+                            data-testid="input-new-category-order"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 pt-5">
+                          <Switch
+                            checked={editForm.isActive}
+                            onCheckedChange={(checked) => setEditForm({ ...editForm, isActive: checked })}
+                            data-testid="switch-new-category-active"
+                          />
+                          <Label className="text-xs">Active</Label>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsCreating(false)}
+                          data-testid="button-cancel-create-category"
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Annuler
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={saveCreate}
+                          disabled={createMutation.isPending}
+                          data-testid="button-save-create-category"
+                        >
+                          {createMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Check className="w-4 h-4 mr-1" />
+                              Créer
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {categories.length === 0 && !isCreating ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Aucune catégorie. Créez-en une pour commencer.
+                  </p>
+                ) : (
+                  categories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center gap-4 p-4 rounded-md bg-muted/50"
+                      data-testid={`category-row-${category.id}`}
+                    >
+                      {editingCategory?.id === category.id ? (
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <Label className="text-xs">Nom</Label>
+                            <Input
+                              value={editForm.name}
+                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                              data-testid="input-edit-category-name"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Description</Label>
+                            <Input
+                              value={editForm.description}
+                              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                              data-testid="input-edit-category-description"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Ordre</Label>
+                              <Input
+                                type="number"
+                                value={editForm.displayOrder}
+                                onChange={(e) => setEditForm({ ...editForm, displayOrder: e.target.value })}
+                                data-testid="input-edit-category-order"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 pt-5">
+                              <Switch
+                                checked={editForm.isActive}
+                                onCheckedChange={(checked) => setEditForm({ ...editForm, isActive: checked })}
+                                data-testid="switch-edit-category-active"
+                              />
+                              <Label className="text-xs">Active</Label>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingCategory(null)}
+                              data-testid="button-cancel-edit-category"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Annuler
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={saveEdit}
+                              disabled={updateMutation.isPending}
+                              data-testid="button-save-edit-category"
+                            >
+                              {updateMutation.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Enregistrer
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <Store className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium" data-testid={`text-category-name-${category.id}`}>
+                                {category.name}
+                              </p>
+                              <Badge variant={category.isActive ? "default" : "secondary"} className="text-xs">
+                                {category.isActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                            {category.description && (
+                              <p className="text-sm text-muted-foreground">{category.description}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">Ordre: {category.displayOrder}</p>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => startEdit(category)}
+                              data-testid={`button-edit-category-${category.id}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setDeletingCategory(category)}
+                              data-testid={`button-delete-category-${category.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingCategory} onOpenChange={(open) => !open && setDeletingCategory(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette catégorie ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer la catégorie "{deletingCategory?.name}" ?
+              Cette action est irréversible. Les catégories utilisées par des commerçants ne peuvent pas être supprimées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-category">Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingCategory && deleteMutation.mutate(deletingCategory.id)}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-confirm-delete-category"
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

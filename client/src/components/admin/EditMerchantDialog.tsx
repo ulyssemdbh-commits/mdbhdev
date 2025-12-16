@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Merchant } from "@shared/schema";
+import { Loader2 } from "lucide-react";
+import type { Merchant, MerchantCategory } from "@shared/schema";
 
 interface EditMerchantDialogProps {
   merchant: Merchant | null;
@@ -17,20 +19,11 @@ interface EditMerchantDialogProps {
   isPending?: boolean;
 }
 
-const categories = [
-  { value: "boulangerie", label: "Boulangerie / Pâtisserie" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "cafe", label: "Café / Bar" },
-  { value: "epicerie", label: "Épicerie" },
-  { value: "pharmacie", label: "Pharmacie" },
-  { value: "fleuriste", label: "Fleuriste" },
-  { value: "coiffeur", label: "Coiffeur / Beauté" },
-  { value: "vetements", label: "Vêtements" },
-  { value: "librairie", label: "Librairie / Papeterie" },
-  { value: "autre", label: "Autre" },
-];
-
 export function EditMerchantDialog({ merchant, open, onOpenChange, onSave, isPending }: EditMerchantDialogProps) {
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<MerchantCategory[]>({
+    queryKey: ["/api/merchant-categories"],
+    enabled: open,
+  });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -106,11 +99,21 @@ export function EditMerchantDialog({ merchant, open, onOpenChange, onSave, isPen
                   <SelectValue placeholder="Sélectionner une catégorie" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
+                  {categoriesLoading ? (
+                    <div className="flex justify-center py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  ) : categories.length === 0 ? (
+                    <div className="px-2 py-2 text-sm text-muted-foreground">
+                      Aucune catégorie disponible
+                    </div>
+                  ) : (
+                    categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

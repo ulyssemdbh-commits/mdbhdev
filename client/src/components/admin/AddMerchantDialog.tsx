@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Store, MapPin, Phone, Mail, User, Building2, CreditCard } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Plus, Store, MapPin, Phone, Mail, User, Building2, CreditCard, Loader2 } from "lucide-react";
+import type { MerchantCategory } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,21 +52,13 @@ interface AddMerchantDialogProps {
   isLoading?: boolean;
 }
 
-const categories = [
-  { value: "boulangerie", label: "Boulangerie / Pâtisserie" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "cafe", label: "Café / Bar" },
-  { value: "epicerie", label: "Épicerie" },
-  { value: "pharmacie", label: "Pharmacie" },
-  { value: "fleuriste", label: "Fleuriste" },
-  { value: "coiffeur", label: "Coiffeur / Beauté" },
-  { value: "vetements", label: "Vêtements" },
-  { value: "librairie", label: "Librairie / Papeterie" },
-  { value: "autre", label: "Autre" },
-];
-
 export function AddMerchantDialog({ onSubmit, isLoading }: AddMerchantDialogProps) {
   const [open, setOpen] = useState(false);
+  
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<MerchantCategory[]>({
+    queryKey: ["/api/merchant-categories"],
+    enabled: open,
+  });
 
   const form = useForm<MerchantFormData>({
     resolver: zodResolver(merchantSchema),
@@ -140,11 +134,21 @@ export function AddMerchantDialog({ onSubmit, isLoading }: AddMerchantDialogProp
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
+                      {categoriesLoading ? (
+                        <div className="flex justify-center py-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        </div>
+                      ) : categories.length === 0 ? (
+                        <div className="px-2 py-2 text-sm text-muted-foreground">
+                          Aucune catégorie disponible
+                        </div>
+                      ) : (
+                        categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.name}>
+                            {cat.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

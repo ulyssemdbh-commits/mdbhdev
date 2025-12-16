@@ -11,10 +11,11 @@ import { AddMerchantDialog } from "@/components/admin/AddMerchantDialog";
 import { EditMerchantDialog } from "@/components/admin/EditMerchantDialog";
 import { DeleteMerchantDialog } from "@/components/admin/DeleteMerchantDialog";
 import { MerchantDetailsDialog } from "@/components/admin/MerchantDetailsDialog";
-import { ClientsListDialog, MerchantsListDialog, TransactionsListDialog, CommissionsListDialog } from "@/components/admin/AdminDetailDialogs";
+import { ClientsListDialog, MerchantsListDialog, TransactionsListDialog, CommissionsListDialog, CategoriesListDialog } from "@/components/admin/AdminDetailDialogs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, LayoutDashboard, Store } from "lucide-react";
+import { Loader2, LayoutDashboard, Store, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
@@ -36,6 +37,7 @@ export default function AdminDashboard() {
   const [deletingMerchant, setDeletingMerchant] = useState<Merchant | null>(null);
   const [viewingMerchantId, setViewingMerchantId] = useState<string | null>(null);
   const [activeDetailDialog, setActiveDetailDialog] = useState<AdminStatType | null>(null);
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
 
   const handleStatCardClick = (type: AdminStatType) => {
     setActiveDetailDialog(type);
@@ -370,12 +372,22 @@ export default function AdminDashboard() {
                     Ajoutez, modifiez ou supprimez des commerçants du réseau
                   </p>
                 </div>
-                <AddMerchantDialog
-                  onSubmit={async (data) => {
-                    await createMerchantMutation.mutateAsync(data);
-                  }}
-                  isLoading={createMerchantMutation.isPending}
-                />
+                <div className="flex gap-2 flex-wrap">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCategoriesDialogOpen(true)}
+                    data-testid="button-manage-categories"
+                  >
+                    <Tag className="w-4 h-4 mr-2" />
+                    Gérer les catégories
+                  </Button>
+                  <AddMerchantDialog
+                    onSubmit={async (data) => {
+                      await createMerchantMutation.mutateAsync(data);
+                    }}
+                    isLoading={createMerchantMutation.isPending}
+                  />
+                </div>
               </div>
 
               <MerchantManagement
@@ -431,6 +443,11 @@ export default function AdminDashboard() {
       <CommissionsListDialog
         open={activeDetailDialog === "commissions"}
         onOpenChange={(open) => !open && setActiveDetailDialog(null)}
+      />
+
+      <CategoriesListDialog
+        open={categoriesDialogOpen}
+        onOpenChange={setCategoriesDialogOpen}
       />
     </div>
   );

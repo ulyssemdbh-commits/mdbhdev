@@ -87,6 +87,15 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+export const merchantCategories = pgTable("merchant_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  displayOrder: decimal("display_order", { precision: 5, scale: 0 }).default("0").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const upsertUserSchema = createInsertSchema(users);
 
 export type UpsertUser = typeof users.$inferInsert;
@@ -133,3 +142,11 @@ export const insertCashbackTransferSchema = createInsertSchema(cashbackTransfers
 
 export type InsertCashbackTransfer = z.infer<typeof insertCashbackTransferSchema>;
 export type CashbackTransfer = typeof cashbackTransfers.$inferSelect;
+
+export const insertMerchantCategorySchema = createInsertSchema(merchantCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMerchantCategory = z.infer<typeof insertMerchantCategorySchema>;
+export type MerchantCategory = typeof merchantCategories.$inferSelect;
