@@ -158,7 +158,7 @@ export default function LoginPage() {
         </div>
 
         <Card>
-          <CardContent className="pt-6 space-y-3">
+          <CardContent className="pt-6">
             <Button
               variant="outline"
               className="w-full gap-2"
@@ -168,17 +168,6 @@ export default function LoginPage() {
             >
               <Scan className="w-5 h-5" />
               Connexion Face ID
-            </Button>
-
-            <Button
-              variant="secondary"
-              className="w-full gap-2"
-              size="lg"
-              onClick={handleLogin}
-              data-testid="button-login-replit"
-            >
-              <LogIn className="w-5 h-5" />
-              Connexion avec Replit
             </Button>
           </CardContent>
         </Card>
