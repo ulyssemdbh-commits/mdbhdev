@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/shared/Header";
 import { QRCodeDisplay } from "@/components/client/QRCodeDisplay";
 import { BalanceCard } from "@/components/client/BalanceCard";
@@ -11,6 +12,20 @@ import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavi
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import type { User, Merchant as APIMerchant, CashbackBalance } from "@shared/schema";
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+};
+
+const staggerChildren = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
 
 // todo: remove mock functionality for bons plans
 const mockBonsPlans: BonPlan[] = [
@@ -121,86 +136,128 @@ export default function ClientDashboard() {
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="container max-w-lg px-4 py-6">
-        {activeTab === "compte" && (
-          <div className="space-y-6">
-            <QRCodeDisplay clientId={clientId} clientName={clientName} />
-            <BalanceCard available={availableBalance} pending={pendingBalance} />
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <TransactionList transactions={transactions} />
-            )}
-          </div>
-        )}
-
-        {activeTab === "bonsplans" && (
-          <div className="space-y-4">
-            <MerchantFilters
-              searchQuery={bonsPlansSearchQuery}
-              onSearchChange={setBonsPlansSearchQuery}
-              activeCategory={bonsPlansCategory}
-              onCategoryChange={setBonsPlansCategory}
-            />
-            <h2 className="text-xl font-bold">Bons Plans</h2>
-            <p className="text-sm text-muted-foreground">
-              Découvrez les offres exclusives de nos commerçants partenaires
-            </p>
-            <div className="space-y-4">
-              {filteredBonsPlans.length > 0 ? (
-                filteredBonsPlans.map((bp) => (
-                  <BonPlanCard
-                    key={bp.id}
-                    bonPlan={bp}
-                    onViewOffer={() => console.log("View offer:", bp.id)}
-                  />
-                ))
+        <AnimatePresence mode="wait">
+          {activeTab === "compte" && (
+            <motion.div
+              key="compte"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={fadeInUp}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              <motion.div variants={fadeInUp}>
+                <QRCodeDisplay clientId={clientId} clientName={clientName} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <BalanceCard available={availableBalance} pending={pendingBalance} />
+              </motion.div>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
               ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Aucun bon plan trouvé pour cette recherche
-                </p>
+                <motion.div variants={fadeInUp}>
+                  <TransactionList transactions={transactions} />
+                </motion.div>
               )}
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
 
-        {activeTab === "partrev" && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold">Mes partREV</h2>
-            <p className="text-sm text-muted-foreground">
-              Les commerçants partenaires où gagner du cashback
-            </p>
-            <MerchantFilters
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              activeCategory={categoryFilter}
-              onCategoryChange={setCategoryFilter}
-              onProximitySort={() => console.log("Sort by proximity")}
-            />
-            {merchantsLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredMerchants.length > 0 ? (
-                  filteredMerchants.map((merchant) => (
-                    <MerchantCard
-                      key={merchant.id}
-                      merchant={merchant}
-                      onClick={() => console.log("View merchant:", merchant.id)}
-                    />
+          {activeTab === "bonsplans" && (
+            <motion.div
+              key="bonsplans"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={fadeInUp}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              <MerchantFilters
+                searchQuery={bonsPlansSearchQuery}
+                onSearchChange={setBonsPlansSearchQuery}
+                activeCategory={bonsPlansCategory}
+                onCategoryChange={setBonsPlansCategory}
+              />
+              <motion.h2 variants={fadeInUp} className="text-xl font-bold">Bons Plans</motion.h2>
+              <p className="text-sm text-muted-foreground">
+                Découvrez les offres exclusives de nos commerçants partenaires
+              </p>
+              <motion.div variants={staggerChildren} className="space-y-4">
+                {filteredBonsPlans.length > 0 ? (
+                  filteredBonsPlans.map((bp, index) => (
+                    <motion.div
+                      key={bp.id}
+                      variants={fadeInUp}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <BonPlanCard
+                        bonPlan={bp}
+                        onViewOffer={() => console.log("View offer:", bp.id)}
+                      />
+                    </motion.div>
                   ))
                 ) : (
                   <p className="text-center text-muted-foreground py-8">
-                    Aucun commerçant trouvé
+                    Aucun bon plan trouvé pour cette recherche
                   </p>
                 )}
-              </div>
-            )}
-          </div>
-        )}
+              </motion.div>
+            </motion.div>
+          )}
+
+          {activeTab === "partrev" && (
+            <motion.div
+              key="partrev"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={fadeInUp}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              <motion.h2 variants={fadeInUp} className="text-xl font-bold">Mes partREV</motion.h2>
+              <p className="text-sm text-muted-foreground">
+                Les commerçants partenaires où gagner du cashback
+              </p>
+              <MerchantFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                activeCategory={categoryFilter}
+                onCategoryChange={setCategoryFilter}
+                onProximitySort={() => console.log("Sort by proximity")}
+              />
+              {merchantsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <motion.div variants={staggerChildren} className="space-y-3">
+                  {filteredMerchants.length > 0 ? (
+                    filteredMerchants.map((merchant, index) => (
+                      <motion.div
+                        key={merchant.id}
+                        variants={fadeInUp}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <MerchantCard
+                          merchant={merchant}
+                          onClick={() => console.log("View merchant:", merchant.id)}
+                        />
+                      </motion.div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      Aucun commerçant trouvé
+                    </p>
+                  )}
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
