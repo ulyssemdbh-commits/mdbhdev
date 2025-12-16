@@ -70,7 +70,7 @@ function App() {
         <Switch>
           <Route path="/" component={Router} />
           <Route path="/login" component={LoginPage} />
-          <Route path="/Admin">
+          <Route path="/admin">
             <ProtectedRoute allowedRoles={["admin"]}>
               <AdminDashboard />
             </ProtectedRoute>
