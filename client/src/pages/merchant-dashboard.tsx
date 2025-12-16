@@ -16,11 +16,24 @@ import type { Merchant, Transaction } from "@shared/schema";
 
 type MerchantView = "scanner" | "form" | "dashboard" | "statistics";
 
+interface ClientCashbackInfo {
+  clientId: string;
+  clientName: string | null;
+  totalAvailable: string;
+  totalPending: string;
+  totalBalance: string;
+}
+
 export default function MerchantDashboard() {
   const [view, setView] = useState<MerchantView>("dashboard");
   const [scannedClientId, setScannedClientId] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  const { data: clientCashbackInfo } = useQuery<ClientCashbackInfo>({
+    queryKey: ["/api/merchant/client", scannedClientId, "cashback"],
+    enabled: !!scannedClientId,
+  });
 
   const { data: merchantProfile, isLoading: merchantLoading } = useQuery<Merchant>({
     queryKey: ["/api/merchant/me"],
@@ -194,6 +207,9 @@ export default function MerchantDashboard() {
         {view === "form" && scannedClientId && (
           <TransactionForm
             clientId={scannedClientId}
+            clientName={clientCashbackInfo?.clientName || undefined}
+            clientCashbackAvailable={clientCashbackInfo?.totalAvailable}
+            clientCashbackPending={clientCashbackInfo?.totalPending}
             onSubmit={handleTransactionSubmit}
             onCancel={() => {
               setScannedClientId(null);

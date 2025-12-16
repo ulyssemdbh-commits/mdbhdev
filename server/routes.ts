@@ -185,6 +185,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get client cashback info for merchants
+  app.get('/api/merchant/client/:clientId/cashback', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(403).json({ message: "Only merchants can access this endpoint" });
+      }
+
+      const clientId = req.params.clientId;
+      const balances = await storage.getCashbackBalancesByUser(clientId);
+      
+      // Calculate total available cashback across all merchants
+      const totalAvailable = balances.reduce((sum, b) => sum + parseFloat(b.availableBalance || "0"), 0);
+      const totalPending = balances.reduce((sum, b) => sum + parseFloat(b.pendingBalance || "0"), 0);
+      
+      // Get client user info if available
+      const clientUser = await storage.getUser(clientId);
+      
+      res.json({
+        clientId,
+        clientName: clientUser ? `${clientUser.firstName || ""} ${clientUser.lastName || ""}`.trim() || clientUser.email : null,
+        totalAvailable: totalAvailable.toFixed(2),
+        totalPending: totalPending.toFixed(2),
+        totalBalance: (totalAvailable + totalPending).toFixed(2),
+      });
+    } catch (error) {
+      console.error("Error fetching client cashback:", error);
+      res.status(500).json({ message: "Failed to fetch client cashback" });
+    }
+  });
+
   // Cashback API
   app.get('/api/cashback/balances', isAuthenticated, async (req: any, res) => {
     try {

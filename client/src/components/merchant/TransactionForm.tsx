@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { User, Euro, Check, X } from "lucide-react";
+import { User, Euro, Check, X, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface TransactionFormProps {
   clientId: string;
   clientName?: string;
+  clientCashbackAvailable?: string;
+  clientCashbackPending?: string;
   onSubmit: (amount: number) => void;
   onCancel: () => void;
 }
@@ -14,6 +17,8 @@ interface TransactionFormProps {
 export function TransactionForm({
   clientId,
   clientName,
+  clientCashbackAvailable,
+  clientCashbackPending,
   onSubmit,
   onCancel,
 }: TransactionFormProps) {
@@ -42,13 +47,30 @@ export function TransactionForm({
         <CardTitle className="text-lg">Nouvelle transaction</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex items-center gap-3 p-3 bg-muted rounded-md">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary">
-            <User className="w-5 h-5 text-primary-foreground" />
+        <div className="p-3 bg-muted rounded-md space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary">
+              <User className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="font-medium">{clientName || "Client REV"}</p>
+              <p className="text-sm text-muted-foreground">{clientId}</p>
+            </div>
           </div>
-          <div>
-            <p className="font-medium">{clientName || "Client REV"}</p>
-            <p className="text-sm text-muted-foreground">{clientId}</p>
+          
+          <div className="flex items-center gap-2 p-2 bg-background rounded-md">
+            <Wallet className="w-4 h-4 text-primary" />
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">Cashback disponible</p>
+              <p className="font-semibold text-primary" data-testid="text-client-cashback-available">
+                {formatCurrency(parseFloat(clientCashbackAvailable || "0"))}
+              </p>
+            </div>
+            {clientCashbackPending && parseFloat(clientCashbackPending) > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                +{formatCurrency(parseFloat(clientCashbackPending))} en attente
+              </Badge>
+            )}
           </div>
         </div>
 
