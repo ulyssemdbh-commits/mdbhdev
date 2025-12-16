@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/shared/Header";
 import { AccountSection } from "@/components/shared/AccountSection";
-import { AdminStats } from "@/components/admin/AdminStats";
+import { AdminStats, type AdminStatType } from "@/components/admin/AdminStats";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 import { MerchantManagement, type AdminMerchant } from "@/components/admin/MerchantManagement";
@@ -11,6 +11,7 @@ import { AddMerchantDialog } from "@/components/admin/AddMerchantDialog";
 import { EditMerchantDialog } from "@/components/admin/EditMerchantDialog";
 import { DeleteMerchantDialog } from "@/components/admin/DeleteMerchantDialog";
 import { MerchantDetailsDialog } from "@/components/admin/MerchantDetailsDialog";
+import { ClientsListDialog, MerchantsListDialog, TransactionsListDialog, CommissionsListDialog } from "@/components/admin/AdminDetailDialogs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, LayoutDashboard, Store } from "lucide-react";
@@ -34,6 +35,11 @@ export default function AdminDashboard() {
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [deletingMerchant, setDeletingMerchant] = useState<Merchant | null>(null);
   const [viewingMerchantId, setViewingMerchantId] = useState<string | null>(null);
+  const [activeDetailDialog, setActiveDetailDialog] = useState<AdminStatType | null>(null);
+
+  const handleStatCardClick = (type: AdminStatType) => {
+    setActiveDetailDialog(type);
+  };
 
   const { data: statsRaw, isLoading: statsLoading } = useQuery<AdminStatsData | null>({
     queryKey: ["/api/admin/stats"],
@@ -273,6 +279,7 @@ export default function AdminDashboard() {
                 totalCommissions={stats.totalCommissions}
                 transactionGrowth={0}
                 merchantGrowth={0}
+                onCardClick={handleStatCardClick}
               />
 
               {chartData.length > 0 && (
@@ -404,6 +411,26 @@ export default function AdminDashboard() {
         merchantId={viewingMerchantId}
         open={!!viewingMerchantId}
         onOpenChange={(open) => !open && setViewingMerchantId(null)}
+      />
+
+      <ClientsListDialog
+        open={activeDetailDialog === "clients"}
+        onOpenChange={(open) => !open && setActiveDetailDialog(null)}
+      />
+
+      <MerchantsListDialog
+        open={activeDetailDialog === "merchants"}
+        onOpenChange={(open) => !open && setActiveDetailDialog(null)}
+      />
+
+      <TransactionsListDialog
+        open={activeDetailDialog === "transactions"}
+        onOpenChange={(open) => !open && setActiveDetailDialog(null)}
+      />
+
+      <CommissionsListDialog
+        open={activeDetailDialog === "commissions"}
+        onOpenChange={(open) => !open && setActiveDetailDialog(null)}
       />
     </div>
   );
