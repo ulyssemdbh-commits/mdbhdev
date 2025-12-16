@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Store, MapPin, Phone, Mail } from "lucide-react";
+import { Plus, Store, MapPin, Phone, Mail, User, Building2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +37,10 @@ const merchantSchema = z.object({
   address: z.string().min(5, "L'adresse doit contenir au moins 5 caractères"),
   phone: z.string().optional(),
   email: z.string().email("Email invalide").optional().or(z.literal("")),
+  siret: z.string().length(14, "Le SIRET doit contenir 14 chiffres").optional().or(z.literal("")),
+  contactName: z.string().optional(),
+  bankIban: z.string().optional(),
+  bankBic: z.string().optional(),
 });
 
 type MerchantFormData = z.infer<typeof merchantSchema>;
@@ -71,6 +75,10 @@ export function AddMerchantDialog({ onSubmit, isLoading }: AddMerchantDialogProp
       address: "",
       phone: "",
       email: "",
+      siret: "",
+      contactName: "",
+      bankIban: "",
+      bankBic: "",
     },
   });
 
@@ -228,6 +236,96 @@ export function AddMerchantDialog({ onSubmit, isLoading }: AddMerchantDialogProp
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="contactName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nom du contact</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Jean Dupont" 
+                        className="pl-9"
+                        {...field} 
+                        data-testid="input-merchant-contact"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="siret"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Numéro SIRET</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="12345678901234" 
+                        className="pl-9"
+                        maxLength={14}
+                        {...field} 
+                        data-testid="input-merchant-siret"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Coordonnées bancaires</p>
+              <div className="grid grid-cols-1 gap-3">
+                <FormField
+                  control={form.control}
+                  name="bankIban"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>IBAN</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="FR76 1234 5678 9012 3456 7890 123" 
+                            className="pl-9"
+                            {...field} 
+                            data-testid="input-merchant-iban"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="bankBic"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>BIC</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="BNPAFRPP" 
+                          {...field} 
+                          data-testid="input-merchant-bic"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button 

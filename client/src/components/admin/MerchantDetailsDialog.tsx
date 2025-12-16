@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, Users, Euro, Receipt } from "lucide-react";
+import { Loader2, TrendingUp, Users, Euro, Receipt, Phone, Mail, Building2, CreditCard, User } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Merchant, Transaction } from "@shared/schema";
 
@@ -100,18 +100,50 @@ export function MerchantDetailsDialog({ merchantId, open, onOpenChange }: Mercha
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Informations</CardTitle>
+                <CardTitle className="text-lg">Informations entreprise</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center gap-4">
                   <span className="text-muted-foreground">Catégorie</span>
                   <span className="font-medium capitalize">{stats.merchant.category}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center gap-4">
                   <span className="text-muted-foreground">Adresse</span>
-                  <span className="font-medium">{stats.merchant.address || "Non renseignée"}</span>
+                  <span className="font-medium text-right">{stats.merchant.address || "Non renseignée"}</span>
                 </div>
-                <div className="flex justify-between">
+                {stats.merchant.phone && (
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Phone className="w-3 h-3" /> Téléphone
+                    </span>
+                    <span className="font-medium">{stats.merchant.phone}</span>
+                  </div>
+                )}
+                {stats.merchant.email && (
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Mail className="w-3 h-3" /> Email
+                    </span>
+                    <span className="font-medium">{stats.merchant.email}</span>
+                  </div>
+                )}
+                {stats.merchant.contactName && (
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <User className="w-3 h-3" /> Contact
+                    </span>
+                    <span className="font-medium">{stats.merchant.contactName}</span>
+                  </div>
+                )}
+                {stats.merchant.siret && (
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Building2 className="w-3 h-3" /> SIRET
+                    </span>
+                    <span className="font-medium font-mono">{stats.merchant.siret}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center gap-4">
                   <span className="text-muted-foreground">Inscrit le</span>
                   <span className="font-medium">
                     {new Date(stats.merchant.createdAt).toLocaleDateString("fr-FR")}
@@ -119,6 +151,30 @@ export function MerchantDetailsDialog({ merchantId, open, onOpenChange }: Mercha
                 </div>
               </CardContent>
             </Card>
+
+            {(stats.merchant.bankIban || stats.merchant.bankBic) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" /> Coordonnées bancaires
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {stats.merchant.bankIban && (
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-muted-foreground">IBAN</span>
+                      <span className="font-medium font-mono text-sm">{stats.merchant.bankIban}</span>
+                    </div>
+                  )}
+                  {stats.merchant.bankBic && (
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-muted-foreground">BIC</span>
+                      <span className="font-medium font-mono">{stats.merchant.bankBic}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {stats.monthlyData.length > 0 && (
               <Card>

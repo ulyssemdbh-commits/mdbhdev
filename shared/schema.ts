@@ -27,6 +27,12 @@ export const merchants = pgTable("merchants", {
   cashbackRate: decimal("cashback_rate", { precision: 5, scale: 2 }).default("10.00").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  siret: text("siret"),
+  contactName: text("contact_name"),
+  bankIban: text("bank_iban"),
+  bankBic: text("bank_bic"),
 });
 
 export const transactions = pgTable("transactions", {
