@@ -13,8 +13,9 @@ import { DeleteMerchantDialog } from "@/components/admin/DeleteMerchantDialog";
 import { MerchantDetailsDialog } from "@/components/admin/MerchantDetailsDialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, LayoutDashboard, Store } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import type { Merchant, Transaction } from "@shared/schema";
 
@@ -240,19 +241,11 @@ export default function AdminDashboard() {
       <Header title="REV Admin" />
 
       <main className="container max-w-4xl px-4 py-6 space-y-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-2xl font-bold">Tableau de bord</h2>
-            <p className="text-sm text-muted-foreground">
-              Vue d'ensemble du réseau REV
-            </p>
-          </div>
-          <AddMerchantDialog
-            onSubmit={async (data) => {
-              await createMerchantMutation.mutateAsync(data);
-            }}
-            isLoading={createMerchantMutation.isPending}
-          />
+        <div>
+          <h2 className="text-2xl font-bold">REV Administration</h2>
+          <p className="text-sm text-muted-foreground">
+            Gérez votre réseau de commerçants
+          </p>
         </div>
 
         {isLoading ? (
@@ -260,104 +253,134 @@ export default function AdminDashboard() {
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <>
-            <AdminStats
-              totalTransactions={stats.totalTransactions}
-              totalMerchants={stats.totalMerchants}
-              totalClients={stats.totalClients}
-              totalCommissions={stats.totalCommissions}
-              transactionGrowth={0}
-              merchantGrowth={0}
-            />
+          <Tabs defaultValue="dashboard" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="dashboard" className="gap-2" data-testid="tab-dashboard">
+                <LayoutDashboard className="w-4 h-4" />
+                Tableau de bord
+              </TabsTrigger>
+              <TabsTrigger value="merchants" className="gap-2" data-testid="tab-merchants">
+                <Store className="w-4 h-4" />
+                Commerçants
+              </TabsTrigger>
+            </TabsList>
 
-            {chartData.length > 0 && (
-              <Card className="border-card-border">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Évolution du chiffre d'affaires</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="date" className="text-xs" />
-                        <YAxis className="text-xs" />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px'
-                          }}
-                          formatter={(value: number) => [`${value.toFixed(2)} €`, 'CA']}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="sales" 
-                          stroke="hsl(var(--primary))" 
-                          fill="hsl(var(--primary) / 0.2)" 
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <TabsContent value="dashboard" className="space-y-6">
+              <AdminStats
+                totalTransactions={stats.totalTransactions}
+                totalMerchants={stats.totalMerchants}
+                totalClients={stats.totalClients}
+                totalCommissions={stats.totalCommissions}
+                transactionGrowth={0}
+                merchantGrowth={0}
+              />
 
-            {merchantChartData.length > 0 && (
-              <Card className="border-card-border">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">CA par commerçant</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={merchantChartData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis type="number" className="text-xs" />
-                        <YAxis dataKey="name" type="category" width={100} className="text-xs" />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px'
-                          }}
-                          formatter={(value: number) => [`${value.toFixed(2)} €`, 'CA']}
-                        />
-                        <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+              {chartData.length > 0 && (
+                <Card className="border-card-border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Évolution du chiffre d'affaires</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="date" className="text-xs" />
+                          <YAxis className="text-xs" />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                            formatter={(value: number) => [`${value.toFixed(2)} €`, 'CA']}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="sales" 
+                            stroke="hsl(var(--primary))" 
+                            fill="hsl(var(--primary) / 0.2)" 
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-            <CommissionTracker
-              commissions={commissions}
-              totalPending={pendingCommissions}
-              totalCollected={collectedCommissions}
-            />
+              {merchantChartData.length > 0 && (
+                <Card className="border-card-border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">CA par commerçant</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={merchantChartData} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis type="number" className="text-xs" />
+                          <YAxis dataKey="name" type="category" width={100} className="text-xs" />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                            formatter={(value: number) => [`${value.toFixed(2)} €`, 'CA']}
+                          />
+                          <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-            <MerchantManagement
-              merchants={adminMerchants}
-              onValidate={handleValidateMerchant}
-              onSuspend={handleSuspendMerchant}
-              onViewDetails={handleViewDetails}
-              onEdit={handleEditMerchant}
-              onDelete={handleDeleteMerchant}
-            />
+              <CommissionTracker
+                commissions={commissions}
+                totalPending={pendingCommissions}
+                totalCollected={collectedCommissions}
+              />
 
-            <AccountSection 
-              user={{
-                id: (user as any)?.id,
-                email: (user as any)?.email,
-                firstName: (user as any)?.firstName,
-                lastName: (user as any)?.lastName,
-                profileImageUrl: (user as any)?.profileImageUrl,
-                role: "admin",
-              }} 
-              showRole 
-            />
-          </>
+              <AccountSection 
+                user={{
+                  id: (user as any)?.id,
+                  email: (user as any)?.email,
+                  firstName: (user as any)?.firstName,
+                  lastName: (user as any)?.lastName,
+                  profileImageUrl: (user as any)?.profileImageUrl,
+                  role: "admin",
+                }} 
+                showRole 
+              />
+            </TabsContent>
+
+            <TabsContent value="merchants" className="space-y-6">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h3 className="text-lg font-semibold">Gestion des commerçants</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ajoutez, modifiez ou supprimez des commerçants du réseau
+                  </p>
+                </div>
+                <AddMerchantDialog
+                  onSubmit={async (data) => {
+                    await createMerchantMutation.mutateAsync(data);
+                  }}
+                  isLoading={createMerchantMutation.isPending}
+                />
+              </div>
+
+              <MerchantManagement
+                merchants={adminMerchants}
+                onValidate={handleValidateMerchant}
+                onSuspend={handleSuspendMerchant}
+                onViewDetails={handleViewDetails}
+                onEdit={handleEditMerchant}
+                onDelete={handleDeleteMerchant}
+              />
+            </TabsContent>
+          </Tabs>
         )}
       </main>
 
