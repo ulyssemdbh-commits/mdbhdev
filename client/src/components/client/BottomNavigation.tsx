@@ -1,6 +1,6 @@
-import { Tag, Store, User } from "lucide-react";
+import { Tag, Store, User, Send } from "lucide-react";
 
-export type ClientTab = "bonsplans" | "partrev" | "compte";
+export type ClientTab = "bonsplans" | "partrev" | "partager" | "compte";
 
 interface BottomNavigationProps {
   activeTab: ClientTab;
@@ -10,6 +10,7 @@ interface BottomNavigationProps {
 const tabs = [
   { id: "bonsplans" as const, label: "Bons Plans", icon: Tag },
   { id: "partrev" as const, label: "Mes boutiques", icon: Store },
+  { id: "partager" as const, label: "Partager", icon: Send },
   { id: "compte" as const, label: "Mon Compte", icon: User },
 ];
 
