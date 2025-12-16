@@ -9,7 +9,7 @@ interface BottomNavigationProps {
 
 const tabs = [
   { id: "bonsplans" as const, label: "Bons Plans", icon: Tag },
-  { id: "partrev" as const, label: "Mes partREV", icon: Store },
+  { id: "partrev" as const, label: "Mes boutiques", icon: Store },
   { id: "compte" as const, label: "Mon Compte", icon: User },
 ];
 
