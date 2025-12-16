@@ -67,6 +67,16 @@ export const cashbackEntries = pgTable("cashback_entries", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const cashbackTransfers = pgTable("cashback_transfers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fromUserId: varchar("from_user_id").references(() => users.id).notNull(),
+  toUserId: varchar("to_user_id").references(() => users.id).notNull(),
+  merchantId: varchar("merchant_id").references(() => merchants.id).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("completed"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const sessions = pgTable(
   "sessions",
   {
@@ -115,3 +125,11 @@ export type CashbackBalance = typeof cashbackBalances.$inferSelect;
 
 export type InsertCashbackEntry = z.infer<typeof insertCashbackEntrySchema>;
 export type CashbackEntry = typeof cashbackEntries.$inferSelect;
+
+export const insertCashbackTransferSchema = createInsertSchema(cashbackTransfers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCashbackTransfer = z.infer<typeof insertCashbackTransferSchema>;
+export type CashbackTransfer = typeof cashbackTransfers.$inferSelect;
