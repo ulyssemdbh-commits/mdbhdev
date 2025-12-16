@@ -50,6 +50,17 @@ export interface IStorage {
   getPendingCashbackEntries(): Promise<CashbackEntry[]>;
   createCashbackEntry(entry: InsertCashbackEntry): Promise<CashbackEntry>;
   unlockCashbackEntry(id: string): Promise<CashbackEntry | undefined>;
+  
+  // Admin operations
+  getAdminStats(): Promise<{
+    totalTransactions: number;
+    totalMerchants: number;
+    totalClients: number;
+    totalCommissions: number;
+    totalSales: number;
+  }>;
+  getAllTransactions(): Promise<Transaction[]>;
+  getAllMerchantsWithStats(): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -222,6 +233,51 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cashbackEntries.id, id))
       .returning();
     return unlocked;
+  }
+
+  // Admin operations
+  async getAdminStats(): Promise<{
+    totalTransactions: number;
+    totalMerchants: number;
+    totalClients: number;
+    totalCommissions: number;
+    totalSales: number;
+  }> {
+    const allTxs = await db.select().from(transactions);
+    const allMerchants = await db.select().from(merchants).where(eq(merchants.isActive, true));
+    const allUsers = await db.select().from(users).where(eq(users.role, "client"));
+
+    const completedTxs = allTxs.filter(tx => tx.status === "completed");
+    const totalSales = completedTxs.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+    const totalCommissions = completedTxs.reduce((sum, tx) => sum + parseFloat(tx.commissionAmount), 0);
+
+    return {
+      totalTransactions: allTxs.length,
+      totalMerchants: allMerchants.length,
+      totalClients: allUsers.length,
+      totalCommissions,
+      totalSales,
+    };
+  }
+
+  async getAllTransactions(): Promise<Transaction[]> {
+    return db.select().from(transactions).orderBy(desc(transactions.createdAt));
+  }
+
+  async getAllMerchantsWithStats(): Promise<any[]> {
+    const allMerchants = await db.select().from(merchants);
+    const allTxs = await db.select().from(transactions);
+
+    return allMerchants.map(m => {
+      const merchantTxs = allTxs.filter(tx => tx.merchantId === m.id && tx.status === "completed");
+      const totalSales = merchantTxs.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+      
+      return {
+        ...m,
+        totalSales,
+        transactionCount: merchantTxs.length,
+      };
+    });
   }
 }
 

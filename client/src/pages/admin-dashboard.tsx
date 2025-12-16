@@ -1,113 +1,300 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/shared/Header";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { MerchantManagement, type AdminMerchant } from "@/components/admin/MerchantManagement";
 import { CommissionTracker, type WeeklyCommission } from "@/components/admin/CommissionTracker";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import type { Merchant, Transaction } from "@shared/schema";
 
-// todo: remove mock functionality
-const mockMerchants: AdminMerchant[] = [
-  { id: "1", name: "Boulangerie Antoine", status: "active", joinDate: "15 oct. 2024", totalSales: 4520.80, hasBonsPlanPack: true },
-  { id: "2", name: "Café Marcel", status: "active", joinDate: "22 oct. 2024", totalSales: 2180.50, hasBonsPlanPack: true },
-  { id: "3", name: "Supermarché Bio", status: "pending", joinDate: "5 déc. 2024", totalSales: 0, hasBonsPlanPack: false },
-  { id: "4", name: "Pharmacie Centrale", status: "active", joinDate: "1 nov. 2024", totalSales: 3890.20, hasBonsPlanPack: false },
-  { id: "5", name: "Fleuriste Rose", status: "suspended", joinDate: "10 nov. 2024", totalSales: 650.00, hasBonsPlanPack: false },
-];
-
-// todo: remove mock functionality
-const mockCommissions: WeeklyCommission[] = [
-  { merchantId: "1", merchantName: "Boulangerie Antoine", weekLabel: "Sem. 49", totalSales: 850.40, commission: 110.55, status: "pending" },
-  { merchantId: "2", merchantName: "Café Marcel", weekLabel: "Sem. 49", totalSales: 420.00, commission: 54.60, status: "pending" },
-  { merchantId: "4", merchantName: "Pharmacie Centrale", weekLabel: "Sem. 49", totalSales: 720.80, commission: 93.70, status: "pending" },
-  { merchantId: "1", merchantName: "Boulangerie Antoine", weekLabel: "Sem. 48", totalSales: 920.00, commission: 119.60, status: "collected" },
-  { merchantId: "2", merchantName: "Café Marcel", weekLabel: "Sem. 48", totalSales: 380.50, commission: 49.47, status: "collected" },
-];
+interface AdminStatsData {
+  totalTransactions: number;
+  totalMerchants: number;
+  totalClients: number;
+  totalCommissions: number;
+  totalSales: number;
+}
 
 export default function AdminDashboard() {
-  const [merchants, setMerchants] = useState(mockMerchants);
   const { toast } = useToast();
 
-  // todo: remove mock functionality
-  const stats = {
-    totalTransactions: 1847,
-    totalMerchants: 24,
-    totalClients: 892,
-    totalCommissions: 8450.30,
-    transactionGrowth: 12,
-    merchantGrowth: 8,
+  const { data: statsRaw, isLoading: statsLoading } = useQuery<AdminStatsData | null>({
+    queryKey: ["/api/admin/stats"],
+  });
+  const stats = statsRaw || {
+    totalTransactions: 0,
+    totalMerchants: 0,
+    totalClients: 0,
+    totalCommissions: 0,
+    totalSales: 0,
   };
 
-  const pendingCommissions = mockCommissions
+  const { data: merchantsRaw = [], isLoading: merchantsLoading } = useQuery<Merchant[]>({
+    queryKey: ["/api/admin/merchants"],
+  });
+  const merchants = merchantsRaw || [];
+
+  const { data: transactionsRaw = [], isLoading: txLoading } = useQuery<Transaction[]>({
+    queryKey: ["/api/admin/transactions"],
+  });
+  const allTransactions = transactionsRaw || [];
+
+  const updateMerchantMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Merchant> }) => {
+      return apiRequest("PATCH", `/api/admin/merchants/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/merchants"] });
+    },
+  });
+
+  // Transform merchants for display
+  const adminMerchants: AdminMerchant[] = merchants.map((m) => {
+    const merchantTxs = allTransactions.filter(
+      (tx) => tx.merchantId === m.id && tx.status === "completed"
+    );
+    const totalSales = merchantTxs.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+
+    return {
+      id: m.id,
+      name: m.name,
+      status: m.isActive ? "active" : "pending",
+      joinDate: new Date(m.createdAt).toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+      totalSales,
+      hasBonsPlanPack: false,
+    };
+  });
+
+  // Generate chart data from transactions
+  const chartData = generateChartData(allTransactions);
+  const merchantChartData = generateMerchantChartData(merchants, allTransactions);
+
+  // Calculate commissions from transactions
+  const commissions: WeeklyCommission[] = generateCommissions(allTransactions, merchants);
+  const pendingCommissions = commissions
     .filter((c) => c.status === "pending")
     .reduce((sum, c) => sum + c.commission, 0);
-
-  const collectedCommissions = mockCommissions
+  const collectedCommissions = commissions
     .filter((c) => c.status === "collected")
     .reduce((sum, c) => sum + c.commission, 0);
 
-  const handleValidateMerchant = (id: string) => {
-    setMerchants(merchants.map((m) =>
-      m.id === id ? { ...m, status: "active" as const } : m
-    ));
-    toast({
-      title: "Commerçant validé",
-      description: "Le commerçant a été activé et peut maintenant utiliser REV",
-    });
+  const handleValidateMerchant = async (id: string) => {
+    try {
+      await updateMerchantMutation.mutateAsync({ id, data: { isActive: true } });
+      toast({
+        title: "Commerçant validé",
+        description: "Le commerçant a été activé et peut maintenant utiliser REV",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider le commerçant",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSuspendMerchant = (id: string) => {
-    setMerchants(merchants.map((m) =>
-      m.id === id ? { ...m, status: "suspended" as const } : m
-    ));
-    toast({
-      title: "Commerçant suspendu",
-      description: "Le commerçant a été suspendu du réseau REV",
-      variant: "destructive",
-    });
+  const handleSuspendMerchant = async (id: string) => {
+    try {
+      await updateMerchantMutation.mutateAsync({ id, data: { isActive: false } });
+      toast({
+        title: "Commerçant suspendu",
+        description: "Le commerçant a été suspendu du réseau REV",
+        variant: "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de suspendre le commerçant",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleViewDetails = (id: string) => {
     console.log("View merchant details:", id);
   };
 
-  const handleLogout = () => {
-    console.log("Admin logout triggered");
-  };
+  const isLoading = statsLoading || merchantsLoading || txLoading;
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="REV Admin" onLogout={handleLogout} />
+      <Header title="REV Admin" />
 
-      <main className="container max-w-2xl px-4 py-6 space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold">Tableau de bord</h2>
-          <p className="text-sm text-muted-foreground">
-            Vue d'ensemble du réseau REV
-          </p>
+      <main className="container max-w-4xl px-4 py-6 space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">Tableau de bord</h2>
+            <p className="text-sm text-muted-foreground">
+              Vue d'ensemble du réseau REV
+            </p>
+          </div>
         </div>
 
-        <AdminStats
-          totalTransactions={stats.totalTransactions}
-          totalMerchants={stats.totalMerchants}
-          totalClients={stats.totalClients}
-          totalCommissions={stats.totalCommissions}
-          transactionGrowth={stats.transactionGrowth}
-          merchantGrowth={stats.merchantGrowth}
-        />
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <AdminStats
+              totalTransactions={stats.totalTransactions}
+              totalMerchants={stats.totalMerchants}
+              totalClients={stats.totalClients}
+              totalCommissions={stats.totalCommissions}
+              transactionGrowth={0}
+              merchantGrowth={0}
+            />
 
-        <CommissionTracker
-          commissions={mockCommissions}
-          totalPending={pendingCommissions}
-          totalCollected={collectedCommissions}
-        />
+            {chartData.length > 0 && (
+              <Card className="border-card-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Évolution du chiffre d'affaires</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="date" className="text-xs" />
+                        <YAxis className="text-xs" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                          formatter={(value: number) => [`${value.toFixed(2)} €`, 'CA']}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="sales" 
+                          stroke="hsl(var(--primary))" 
+                          fill="hsl(var(--primary) / 0.2)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        <MerchantManagement
-          merchants={merchants}
-          onValidate={handleValidateMerchant}
-          onSuspend={handleSuspendMerchant}
-          onViewDetails={handleViewDetails}
-        />
+            {merchantChartData.length > 0 && (
+              <Card className="border-card-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">CA par commerçant</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={merchantChartData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis type="number" className="text-xs" />
+                        <YAxis dataKey="name" type="category" width={100} className="text-xs" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                          formatter={(value: number) => [`${value.toFixed(2)} €`, 'CA']}
+                        />
+                        <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <CommissionTracker
+              commissions={commissions}
+              totalPending={pendingCommissions}
+              totalCollected={collectedCommissions}
+            />
+
+            <MerchantManagement
+              merchants={adminMerchants}
+              onValidate={handleValidateMerchant}
+              onSuspend={handleSuspendMerchant}
+              onViewDetails={handleViewDetails}
+            />
+          </>
+        )}
       </main>
     </div>
   );
+}
+
+function generateChartData(transactions: Transaction[]) {
+  const completed = transactions.filter((tx) => tx.status === "completed");
+  if (completed.length === 0) return [];
+
+  const byDate: Record<string, number> = {};
+  completed.forEach((tx) => {
+    const date = new Date(tx.createdAt).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+    byDate[date] = (byDate[date] || 0) + parseFloat(tx.amount);
+  });
+
+  return Object.entries(byDate)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-14)
+    .map(([date, sales]) => ({ date, sales }));
+}
+
+function generateMerchantChartData(merchants: Merchant[], transactions: Transaction[]) {
+  return merchants
+    .map((m) => {
+      const merchantTxs = transactions.filter(
+        (tx) => tx.merchantId === m.id && tx.status === "completed"
+      );
+      const sales = merchantTxs.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+      return { name: m.name.slice(0, 15), sales };
+    })
+    .filter((m) => m.sales > 0)
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 5);
+}
+
+function generateCommissions(transactions: Transaction[], merchants: Merchant[]): WeeklyCommission[] {
+  const completed = transactions.filter((tx) => tx.status === "completed");
+  if (completed.length === 0) return [];
+
+  const now = new Date();
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const byMerchant: Record<string, { sales: number; commission: number }> = {};
+  
+  completed.forEach((tx) => {
+    if (!byMerchant[tx.merchantId]) {
+      byMerchant[tx.merchantId] = { sales: 0, commission: 0 };
+    }
+    byMerchant[tx.merchantId].sales += parseFloat(tx.amount);
+    byMerchant[tx.merchantId].commission += parseFloat(tx.commissionAmount);
+  });
+
+  return Object.entries(byMerchant).map(([merchantId, data]) => {
+    const merchant = merchants.find((m) => m.id === merchantId);
+    return {
+      merchantId,
+      merchantName: merchant?.name || "Commerçant",
+      weekLabel: "Cette semaine",
+      totalSales: data.sales,
+      commission: data.commission,
+      status: "pending" as const,
+    };
+  });
 }
