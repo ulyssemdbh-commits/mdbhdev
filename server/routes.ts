@@ -279,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin API - Get all merchants for admin panel
+  // Admin API - Get all merchants for admin panel (including inactive)
   app.get('/api/admin/merchants', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -287,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
-      const merchantsList = await storage.getMerchants();
+      const merchantsList = await storage.getAllMerchantsForAdmin();
       res.json(merchantsList);
     } catch (error) {
       console.error("Error fetching merchants for admin:", error);
@@ -303,7 +303,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const merchant = await storage.createMerchant(req.body);
+      const merchantData = {
+        ...req.body,
+        userId: req.body.userId || userId,
+      };
+      const merchant = await storage.createMerchant(merchantData);
       res.json(merchant);
     } catch (error) {
       console.error("Error creating merchant:", error);

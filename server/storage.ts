@@ -61,6 +61,7 @@ export interface IStorage {
   }>;
   getAllTransactions(): Promise<Transaction[]>;
   getAllMerchantsWithStats(): Promise<any[]>;
+  getAllMerchantsForAdmin(): Promise<Merchant[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -278,6 +279,10 @@ export class DatabaseStorage implements IStorage {
         transactionCount: merchantTxs.length,
       };
     });
+  }
+
+  async getAllMerchantsForAdmin(): Promise<Merchant[]> {
+    return db.select().from(merchants).orderBy(desc(merchants.createdAt));
   }
 }
 

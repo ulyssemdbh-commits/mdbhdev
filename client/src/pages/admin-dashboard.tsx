@@ -1,13 +1,12 @@
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/shared/Header";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { MerchantManagement, type AdminMerchant } from "@/components/admin/MerchantManagement";
 import { CommissionTracker, type WeeklyCommission } from "@/components/admin/CommissionTracker";
+import { AddMerchantDialog } from "@/components/admin/AddMerchantDialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import type { Merchant, Transaction } from "@shared/schema";
@@ -50,6 +49,41 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+    },
+  });
+
+  const createMerchantMutation = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      description?: string;
+      category: string;
+      address: string;
+      phone?: string;
+      email?: string;
+    }) => {
+      return apiRequest("POST", "/api/admin/merchants", {
+        name: data.name,
+        description: data.description || "",
+        category: data.category,
+        address: data.address,
+        isActive: false,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Commerçant ajouté",
+        description: "Le nouveau commerçant a été ajouté avec succès",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter le commerçant",
+        variant: "destructive",
+      });
     },
   });
 
@@ -131,13 +165,19 @@ export default function AdminDashboard() {
       <Header title="REV Admin" />
 
       <main className="container max-w-4xl px-4 py-6 space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-2xl font-bold">Tableau de bord</h2>
             <p className="text-sm text-muted-foreground">
               Vue d'ensemble du réseau REV
             </p>
           </div>
+          <AddMerchantDialog
+            onSubmit={async (data) => {
+              await createMerchantMutation.mutateAsync(data);
+            }}
+            isLoading={createMerchantMutation.isPending}
+          />
         </div>
 
         {isLoading ? (
