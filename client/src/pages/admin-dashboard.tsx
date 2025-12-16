@@ -91,12 +91,22 @@ export default function AdminDashboard() {
       address: string;
       phone?: string;
       email?: string;
+      siret?: string;
+      contactName?: string;
+      bankIban?: string;
+      bankBic?: string;
     }) => {
       return apiRequest("POST", "/api/admin/merchants", {
         name: data.name,
         description: data.description || "",
         category: data.category,
         address: data.address,
+        phone: data.phone || null,
+        email: data.email || null,
+        siret: data.siret || null,
+        contactName: data.contactName || null,
+        bankIban: data.bankIban || null,
+        bankBic: data.bankBic || null,
         isActive: false,
       });
     },
