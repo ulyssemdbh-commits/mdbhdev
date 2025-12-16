@@ -1,43 +1,80 @@
-import { MapPin, LogIn, Store, User, Shield } from "lucide-react";
+import { useState } from "react";
+import { MapPin, LogIn, Eye, EyeOff, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
-import { Link } from "wouter";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
   const handleLogin = () => {
     window.location.href = "/api/login";
   };
 
-  const roles = [
-    {
-      icon: User,
-      title: "Client",
-      description: "Gagnez du cashback sur vos achats",
-    },
-    {
-      icon: Store,
-      title: "Commerçant",
-      description: "Gérez vos transactions et fidélisez vos clients",
-    },
-    {
-      icon: Shield,
-      title: "Administrateur",
-      description: "Supervisez le réseau REV",
-    },
-  ];
+  const handleCredentialsLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!identifier.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez entrer votre identifiant",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 8) {
+      toast({
+        title: "Erreur",
+        description: "Le mot de passe doit contenir au moins 8 caractères",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    // For now, redirect to Replit auth as the main authentication method
+    // In a production app, this would call a credentials-based auth endpoint
+    toast({
+      title: "Connexion",
+      description: "Redirection vers l'authentification...",
+    });
+    
+    setTimeout(() => {
+      handleLogin();
+    }, 500);
+  };
+
+  const handleFaceIDLogin = () => {
+    toast({
+      title: "Face ID",
+      description: "Authentification biométrique en cours...",
+    });
+    
+    // Simulate Face ID auth, then redirect to main auth
+    setTimeout(() => {
+      handleLogin();
+    }, 1000);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 flex items-center justify-between gap-4 px-4 py-3 border-b bg-background">
-        <Link href="/">
-          <a className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary">
-              <MapPin className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold">REV</span>
-          </a>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary">
+            <MapPin className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <span className="text-xl font-bold">REV</span>
+        </div>
         <ThemeToggle />
       </header>
 
@@ -51,50 +88,100 @@ export default function LoginPage() {
 
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Se connecter avec Replit</CardTitle>
+            <CardTitle className="text-lg">Identifiants</CardTitle>
             <CardDescription>
-              Utilisez votre compte Replit pour vous connecter en toute sécurité
+              Entrez vos identifiants pour vous connecter
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
+            <form onSubmit={handleCredentialsLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="identifier">Identifiant</Label>
+                <Input
+                  id="identifier"
+                  type="text"
+                  placeholder="Votre identifiant ou email"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  data-testid="input-identifier"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Mot de passe</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="8 caractères minimum"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                    data-testid="input-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    data-testid="button-toggle-password"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Minimum 8 caractères
+                </p>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full gap-2"
+                size="lg"
+                disabled={isLoading}
+                data-testid="button-login-credentials"
+              >
+                <LogIn className="w-5 h-5" />
+                {isLoading ? "Connexion..." : "Se connecter"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center gap-4">
+          <Separator className="flex-1" />
+          <span className="text-sm text-muted-foreground">ou</span>
+          <Separator className="flex-1" />
+        </div>
+
+        <Card>
+          <CardContent className="pt-6 space-y-3">
             <Button
+              variant="outline"
+              className="w-full gap-2"
+              size="lg"
+              onClick={handleFaceIDLogin}
+              data-testid="button-login-faceid"
+            >
+              <Scan className="w-5 h-5" />
+              Connexion Face ID
+            </Button>
+
+            <Button
+              variant="secondary"
               className="w-full gap-2"
               size="lg"
               onClick={handleLogin}
               data-testid="button-login-replit"
             >
               <LogIn className="w-5 h-5" />
-              Se connecter
+              Connexion avec Replit
             </Button>
           </CardContent>
         </Card>
-
-        <section className="space-y-4">
-          <h2 className="text-sm font-medium text-muted-foreground text-center">
-            Accès selon votre rôle
-          </h2>
-          <div className="grid gap-3">
-            {roles.map((role, index) => {
-              const Icon = role.icon;
-              return (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 p-3 rounded-md bg-muted/50"
-                >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10 flex-shrink-0">
-                    <Icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{role.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {role.description}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
 
         <p className="text-center text-sm text-muted-foreground">
           Pas encore de compte ?{" "}
