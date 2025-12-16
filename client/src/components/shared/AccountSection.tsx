@@ -31,7 +31,7 @@ export function AccountSection({ user, showRole = false }: AccountSectionProps) 
         throw new Error("Logout failed");
       }
       queryClient.clear();
-      window.location.href = "/";
+      window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);
       toast({
