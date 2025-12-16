@@ -437,6 +437,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin API - Get all clients for admin panel
+  app.get('/api/admin/clients', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const clients = await storage.getAllClients();
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching clients for admin:", error);
+      res.status(500).json({ message: "Failed to fetch clients" });
+    }
+  });
+
   app.post('/api/admin/merchants', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

@@ -71,6 +71,7 @@ export interface IStorage {
   getAllTransactions(): Promise<Transaction[]>;
   getAllMerchantsWithStats(): Promise<any[]>;
   getAllMerchantsForAdmin(): Promise<Merchant[]>;
+  getAllClients(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -320,6 +321,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAllMerchantsForAdmin(): Promise<Merchant[]> {
     return db.select().from(merchants).orderBy(desc(merchants.createdAt));
+  }
+
+  async getAllClients(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, "client")).orderBy(desc(users.createdAt));
   }
 }
 
