@@ -24,7 +24,7 @@ function ProtectedRoute({ allowedRoles, children }: { allowedRoles: string[], ch
   }
 
   if (!isAuthenticated) {
-    return <LandingPage />;
+    return <LoginPage />;
   }
 
   const role = (user as any)?.role || "client";
@@ -47,7 +47,7 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    return <LandingPage />;
+    return <LoginPage />;
   }
 
   const role = (user as any)?.role || "client";
