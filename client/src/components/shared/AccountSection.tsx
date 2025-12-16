@@ -1,8 +1,11 @@
-import { LogOut, User, Mail, Shield } from "lucide-react";
+import { useState } from "react";
+import { LogOut, User, Mail, Shield, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface AccountSectionProps {
   user: {
@@ -17,13 +20,27 @@ interface AccountSectionProps {
 }
 
 export function AccountSection({ user, showRole = false }: AccountSectionProps) {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { toast } = useToast();
+
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
-      await fetch("/api/logout", { method: "POST", credentials: "include" });
+      const response = await fetch("/api/logout", { method: "POST", credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+      queryClient.clear();
+      window.location.href = "/";
     } catch (error) {
       console.error("Logout error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de se déconnecter. Veuillez réessayer.",
+        variant: "destructive",
+      });
+      setIsLoggingOut(false);
     }
-    window.location.href = "/";
   };
 
   const displayName = user
@@ -82,10 +99,15 @@ export function AccountSection({ user, showRole = false }: AccountSectionProps) 
           variant="destructive"
           className="w-full gap-2"
           onClick={handleLogout}
+          disabled={isLoggingOut}
           data-testid="button-logout-account"
         >
-          <LogOut className="w-4 h-4" />
-          Se déconnecter
+          {isLoggingOut ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <LogOut className="w-4 h-4" />
+          )}
+          {isLoggingOut ? "Déconnexion..." : "Se déconnecter"}
         </Button>
       </CardContent>
     </Card>
