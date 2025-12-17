@@ -778,6 +778,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Merchant billing routes
+  app.get('/api/admin/billings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const billings = await storage.getAllBillings();
+      res.json(billings);
+    } catch (error) {
+      console.error("Error fetching billings:", error);
+      res.status(500).json({ message: "Failed to fetch billings" });
+    }
+  });
+
+  app.get('/api/admin/billings/:merchantId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const billings = await storage.getBillingsByMerchant(req.params.merchantId);
+      res.json(billings);
+    } catch (error) {
+      console.error("Error fetching merchant billings:", error);
+      res.status(500).json({ message: "Failed to fetch merchant billings" });
+    }
+  });
+
+  // Generate billings for all merchants for the current period
+  // Called on 15th and 30th of each month
+  app.post('/api/admin/billings/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const now = new Date();
+      const day = now.getDate();
+      const month = now.getMonth();
+      const year = now.getFullYear();
+
+      // Determine billing period
+      let periodStart: Date, periodEnd: Date;
+      if (day <= 15) {
+        // Period: 1st to 15th
+        periodStart = new Date(year, month, 1, 0, 0, 0);
+        periodEnd = new Date(year, month, 15, 23, 59, 59);
+      } else {
+        // Period: 16th to end of month
+        periodStart = new Date(year, month, 16, 0, 0, 0);
+        periodEnd = new Date(year, month + 1, 0, 23, 59, 59);
+      }
+
+      // Due date is 7 days after period end
+      const dueDate = new Date(periodEnd);
+      dueDate.setDate(dueDate.getDate() + 7);
+
+      const allMerchants = await storage.getAllMerchantsForAdmin();
+      const createdBillings = [];
+
+      for (const merchant of allMerchants) {
+        if (!merchant.isActive) continue;
+
+        const periodTransactions = await storage.getTransactionsForPeriod(
+          merchant.id,
+          periodStart,
+          periodEnd
+        );
+
+        if (periodTransactions.length === 0) continue;
+
+        // Calculate totals
+        // 13% total = 10% cashback + 3% REV fee (with 20% TVA on the 3%)
+        const totalSales = periodTransactions.reduce(
+          (sum, tx) => sum + parseFloat(tx.amount),
+          0
+        );
+        const cashbackAmount = totalSales * 0.10; // 10% cashback
+        const revFeeBeforeTva = totalSales * 0.03; // 3% REV fee
+        const tvaAmount = revFeeBeforeTva * 0.20; // 20% TVA on REV fee
+        const revFeeAmount = revFeeBeforeTva; // 3% before TVA
+        const totalBilled = cashbackAmount + revFeeBeforeTva + tvaAmount; // ~13.6%
+
+        const billing = await storage.createBilling({
+          merchantId: merchant.id,
+          periodStart,
+          periodEnd,
+          totalSales: totalSales.toFixed(2),
+          cashbackAmount: cashbackAmount.toFixed(2),
+          revFeeAmount: revFeeAmount.toFixed(2),
+          tvaAmount: tvaAmount.toFixed(2),
+          totalBilled: totalBilled.toFixed(2),
+          status: "pending",
+          dueDate,
+        });
+
+        createdBillings.push(billing);
+      }
+
+      res.json({ 
+        success: true, 
+        createdCount: createdBillings.length,
+        billings: createdBillings,
+        period: { start: periodStart, end: periodEnd }
+      });
+    } catch (error) {
+      console.error("Error generating billings:", error);
+      res.status(500).json({ message: "Failed to generate billings" });
+    }
+  });
+
+  app.patch('/api/admin/billings/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { status } = req.body;
+      if (!["pending", "paid", "overdue"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const paidAt = status === "paid" ? new Date() : undefined;
+      const billing = await storage.updateBillingStatus(req.params.id, status, paidAt);
+      if (!billing) {
+        return res.status(404).json({ message: "Billing not found" });
+      }
+      res.json(billing);
+    } catch (error) {
+      console.error("Error updating billing status:", error);
+      res.status(500).json({ message: "Failed to update billing status" });
+    }
+  });
+
   // Unlock pending cashback entries (to be called by cron job)
   app.post('/api/cron/unlock-cashback', async (req, res) => {
     try {
