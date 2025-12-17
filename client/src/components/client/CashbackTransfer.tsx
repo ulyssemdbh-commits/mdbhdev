@@ -356,9 +356,19 @@ export function CashbackTransfer() {
           </div>
           <div className="space-y-3">
             <Input
-              placeholder="Code membre ou email"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
+              placeholder="REVid-XXXXXX"
+              value={manualInput.startsWith("REVid-") ? manualInput : `REVid-${manualInput}`}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.startsWith("REVid-")) {
+                  setManualInput(val);
+                } else if (val === "") {
+                  setManualInput("REVid-");
+                }
+              }}
+              onFocus={() => {
+                if (!manualInput) setManualInput("REVid-");
+              }}
               data-testid="input-recipient-code"
             />
             <div className="flex gap-2">
