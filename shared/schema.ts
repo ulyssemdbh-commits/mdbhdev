@@ -211,3 +211,30 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// Bons Plans - Merchant promotions/offers
+export const promotions = pgTable("promotions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  merchantId: varchar("merchant_id").references(() => merchants.id).notNull(),
+  type: text("type").notNull(), // cashback_boost, free_article, discount_percent
+  title: text("title").notNull(),
+  description: text("description"),
+  // For cashback_boost: the boosted rate (e.g., 15% instead of 10%)
+  cashbackBoostRate: decimal("cashback_boost_rate", { precision: 5, scale: 2 }),
+  // For free_article: name of the free item
+  freeArticle: text("free_article"),
+  // For discount_percent: the discount percentage
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPromotionSchema = createInsertSchema(promotions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
+export type Promotion = typeof promotions.$inferSelect;
