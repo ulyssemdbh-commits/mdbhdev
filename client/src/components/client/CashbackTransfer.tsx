@@ -108,10 +108,10 @@ export function CashbackTransfer() {
     };
   }, [step, showManualInput]);
 
-  const fetchRecipientInfo = async (userId: string) => {
+  const fetchRecipientInfo = async (revIdOrUserId: string) => {
     setIsLoadingRecipient(true);
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${revIdOrUserId}`, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -119,7 +119,8 @@ export function CashbackTransfer() {
       }
       const data = await response.json();
       setRecipientInfo(data);
-      setRecipientId(userId);
+      // Use the internal user ID for the transfer, not the REVid
+      setRecipientId(data.id);
       setStep("confirm");
     } catch (error) {
       toast({
