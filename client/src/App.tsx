@@ -75,7 +75,7 @@ function App() {
               <AdminDashboard />
             </ProtectedRoute>
           </Route>
-          <Route path="/merchant">
+          <Route path="/pro">
             <ProtectedRoute allowedRoles={["merchant"]}>
               <MerchantDashboard />
             </ProtectedRoute>
