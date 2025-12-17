@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -53,7 +53,9 @@ export const cashbackBalances = pgTable("cashback_balances", {
   merchantId: varchar("merchant_id").references(() => merchants.id).notNull(),
   availableBalance: decimal("available_balance", { precision: 10, scale: 2 }).default("0.00").notNull(),
   pendingBalance: decimal("pending_balance", { precision: 10, scale: 2 }).default("0.00").notNull(),
-});
+}, (table) => [
+  uniqueIndex("cashback_balances_user_merchant_idx").on(table.userId, table.merchantId),
+]);
 
 export const cashbackEntries = pgTable("cashback_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -111,7 +113,9 @@ export const merchantBillings = pgTable("merchant_billings", {
   dueDate: timestamp("due_date").notNull(),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("merchant_billings_merchant_period_idx").on(table.merchantId, table.periodStart, table.periodEnd),
+]);
 
 export const upsertUserSchema = createInsertSchema(users);
 

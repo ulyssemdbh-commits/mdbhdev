@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, requireRole } from "./replitAuth";
 import { emitTransactionUpdate, emitStatsUpdate, emitMerchantUpdate, emitClientUpdate } from "./socket";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -50,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/merchant/me', isAuthenticated, async (req: any, res) => {
+  app.get('/api/merchant/me', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const merchant = await storage.getMerchantByUserId(userId);
@@ -65,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Transactions API
-  app.get('/api/transactions/merchant', isAuthenticated, async (req: any, res) => {
+  app.get('/api/transactions/merchant', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const merchant = await storage.getMerchantByUserId(userId);
@@ -80,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/transactions/client', isAuthenticated, async (req: any, res) => {
+  app.get('/api/transactions/client', isAuthenticated, requireRole('client', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const txs = await storage.getTransactionsByClient(userId);
@@ -91,20 +92,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/transactions', isAuthenticated, async (req: any, res) => {
+  // Zod schema for transaction validation
+  const createTransactionSchema = z.object({
+    clientId: z.string().min(1, "Client ID is required"),
+    amount: z.union([z.string(), z.number()]).refine(
+      (val) => {
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return !isNaN(num) && num > 0;
+      },
+      { message: "Amount must be a positive number" }
+    ),
+  });
+
+  app.post('/api/transactions', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
-        return res.status(403).json({ message: "Only merchants can create transactions" });
+        return res.status(403).json({ message: "Merchant profile not found" });
       }
 
-      const { clientId, amount } = req.body;
-      if (!clientId || !amount) {
-        return res.status(400).json({ message: "clientId and amount are required" });
+      const validation = createTransactionSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
       }
 
-      const amountNum = parseFloat(amount);
+      const { clientId, amount } = validation.data;
+      const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
       const cashbackAmount = amountNum * 0.10; // 10% cashback for customer
       const commissionAmount = amountNum * 0.13; // 13% total commission (10% + 3% REV)
 
@@ -153,12 +167,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/transactions/:id/cancel', isAuthenticated, async (req: any, res) => {
+  app.post('/api/transactions/:id/cancel', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
-        return res.status(403).json({ message: "Only merchants can cancel transactions" });
+        return res.status(403).json({ message: "Merchant profile not found" });
       }
 
       const transaction = await storage.getTransaction(req.params.id);
@@ -194,12 +208,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get client cashback info for merchants
-  app.get('/api/merchant/client/:clientId/cashback', isAuthenticated, async (req: any, res) => {
+  app.get('/api/merchant/client/:clientId/cashback', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
-        return res.status(403).json({ message: "Only merchants can access this endpoint" });
+        return res.status(403).json({ message: "Merchant profile not found" });
       }
 
       const clientId = req.params.clientId;
@@ -226,12 +240,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Merchant billings API
-  app.get('/api/merchant/billings', isAuthenticated, async (req: any, res) => {
+  app.get('/api/merchant/billings', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
-        return res.status(403).json({ message: "Only merchants can access this endpoint" });
+        return res.status(403).json({ message: "Merchant profile not found" });
       }
 
       const billings = await storage.getBillingsByMerchant(merchant.id);
@@ -243,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cashback API
-  app.get('/api/cashback/balances', isAuthenticated, async (req: any, res) => {
+  app.get('/api/cashback/balances', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const balances = await storage.getCashbackBalancesByUser(userId);
@@ -254,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/cashback/entries', isAuthenticated, async (req: any, res) => {
+  app.get('/api/cashback/entries', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const entries = await storage.getCashbackEntriesByUser(userId);
@@ -265,15 +279,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Zod schema for cashback use validation
+  const useCashbackSchema = z.object({
+    merchantId: z.string().min(1, "Merchant ID is required"),
+    amount: z.union([z.string(), z.number()]).refine(
+      (val) => {
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return !isNaN(num) && num > 0;
+      },
+      { message: "Amount must be a positive number" }
+    ),
+  });
+
   // Use cashback at merchant
-  app.post('/api/cashback/use', isAuthenticated, async (req: any, res) => {
+  app.post('/api/cashback/use', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { merchantId, amount } = req.body;
-
-      if (!merchantId || !amount) {
-        return res.status(400).json({ message: "merchantId and amount are required" });
+      
+      const validation = useCashbackSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
       }
+
+      const { merchantId, amount } = validation.data;
 
       const balance = await storage.getCashbackBalance(userId, merchantId);
       if (!balance) {
@@ -281,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const available = parseFloat(balance.availableBalance);
-      const amountToUse = parseFloat(amount);
+      const amountToUse = typeof amount === 'string' ? parseFloat(amount) : amount;
 
       if (amountToUse > available) {
         return res.status(400).json({ message: "Insufficient cashback balance" });
@@ -303,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cashback Transfers API
-  app.get('/api/users/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/users/:id', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
@@ -322,23 +350,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/cashback/transfer', isAuthenticated, async (req: any, res) => {
+  // Zod schema for cashback transfer validation
+  const transferCashbackSchema = z.object({
+    toUserId: z.string().min(1, "Recipient ID is required"),
+    merchantId: z.string().min(1, "Merchant ID is required"),
+    amount: z.union([z.string(), z.number()]).refine(
+      (val) => {
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return !isNaN(num) && num > 0;
+      },
+      { message: "Amount must be a positive number" }
+    ),
+  });
+
+  app.post('/api/cashback/transfer', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
       const fromUserId = req.user.claims.sub;
-      const { toUserId, merchantId, amount } = req.body;
-
-      if (!toUserId || !merchantId || !amount) {
-        return res.status(400).json({ message: "toUserId, merchantId, and amount are required" });
+      
+      const validation = transferCashbackSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
       }
+
+      const { toUserId, merchantId, amount } = validation.data;
 
       if (fromUserId === toUserId) {
         return res.status(400).json({ message: "Cannot transfer cashback to yourself" });
       }
 
-      const amountNum = parseFloat(amount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        return res.status(400).json({ message: "Invalid transfer amount" });
-      }
+      const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
 
       // Check sender has enough balance for this merchant
       const senderBalance = await storage.getCashbackBalance(fromUserId, merchantId);
@@ -393,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/cashback/transfers', isAuthenticated, async (req: any, res) => {
+  app.get('/api/cashback/transfers', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const transfers = await storage.getCashbackTransfersByUser(userId);
@@ -405,14 +445,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API - Get stats for admin dashboard
-  app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/stats', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const stats = await storage.getAdminStats();
       res.json(stats);
     } catch (error) {
@@ -422,14 +456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API - Get all transactions for admin panel
-  app.get('/api/admin/transactions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/transactions', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const txs = await storage.getAllTransactions();
       res.json(txs);
     } catch (error) {
@@ -439,13 +467,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API - Get all merchants for admin panel (including inactive)
-  app.get('/api/admin/merchants', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/merchants', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
       const merchantsList = await storage.getAllMerchantsForAdmin();
       res.json(merchantsList);
     } catch (error) {
@@ -455,13 +478,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API - Get all clients for admin panel
-  app.get('/api/admin/clients', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/clients', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
       const clients = await storage.getAllClients();
       res.json(clients);
     } catch (error) {
@@ -471,20 +489,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API - Update client
-  app.patch('/api/admin/clients/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/clients/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
 
       const targetUser = await storage.getUser(req.params.id);
       if (!targetUser) {
         return res.status(404).json({ message: "Client not found" });
       }
 
-      // Prevent admin from modifying themselves through this endpoint
       if (req.params.id === userId) {
         return res.status(400).json({ message: "Cannot modify your own account through this endpoint" });
       }
@@ -506,20 +519,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API - Delete client
-  app.delete('/api/admin/clients/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/clients/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
 
       const targetUser = await storage.getUser(req.params.id);
       if (!targetUser) {
         return res.status(404).json({ message: "Client not found" });
       }
 
-      // Prevent admin from deleting themselves
       if (req.params.id === userId) {
         return res.status(400).json({ message: "Cannot delete your own account" });
       }
@@ -535,14 +543,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API - Cancel transaction (admin override, no time limit)
-  app.post('/api/admin/transactions/:id/cancel', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/transactions/:id/cancel', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const transaction = await storage.getTransaction(req.params.id);
       if (!transaction) {
         return res.status(404).json({ message: "Transaction not found" });
@@ -564,17 +566,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/merchants', isAuthenticated, async (req: any, res) => {
+  // Zod schema for merchant creation validation
+  const createMerchantSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    category: z.string().min(1, "Category is required"),
+    address: z.string().min(1, "Address is required"),
+    description: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    siret: z.string().optional(),
+    contactName: z.string().optional(),
+    bankIban: z.string().optional(),
+    bankBic: z.string().optional(),
+    cashbackRate: z.string().optional(),
+    isActive: z.boolean().optional(),
+    userId: z.string().optional(),
+  });
+
+  app.post('/api/admin/merchants', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      
+      const validation = createMerchantSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
       }
 
       const merchantData = {
-        ...req.body,
-        userId: req.body.userId || userId,
+        ...validation.data,
+        userId: validation.data.userId || userId,
       };
       const merchant = await storage.createMerchant(merchantData);
       emitMerchantUpdate();
@@ -586,14 +606,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/merchants/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/merchants/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const merchant = await storage.updateMerchant(req.params.id, req.body);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -607,14 +621,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/admin/merchants/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/merchants/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const deleted = await storage.deleteMerchant(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -628,13 +636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/merchants/:id/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/merchants/:id/stats', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
 
       const merchant = await storage.getMerchant(req.params.id);
       if (!merchant) {
@@ -688,14 +691,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin Category Management
-  app.get('/api/admin/merchant-categories', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/merchant-categories', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
@@ -704,19 +701,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/merchant-categories', isAuthenticated, async (req: any, res) => {
+  // Zod schema for category validation
+  const createCategorySchema = z.object({
+    name: z.string().min(2, "Category name must be at least 2 characters"),
+    description: z.string().optional().nullable(),
+    displayOrder: z.string().optional(),
+    isActive: z.boolean().optional(),
+  });
+
+  app.post('/api/admin/merchant-categories', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      const validation = createCategorySchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
       }
 
-      const { name, description, displayOrder, isActive } = req.body;
-      if (!name || name.trim().length < 2) {
-        return res.status(400).json({ message: "Category name must be at least 2 characters" });
-      }
-
+      const { name, description, displayOrder, isActive } = validation.data;
       const category = await storage.createCategory({
         name: name.trim(),
         description: description || null,
@@ -730,14 +730,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/merchant-categories/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/merchant-categories/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const { name, description, displayOrder, isActive } = req.body;
       const updateData: any = {};
       
@@ -762,15 +756,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/admin/merchant-categories/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/merchant-categories/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      // Check if any merchants are using this category
       const allMerchants = await storage.getMerchants();
       const category = await storage.getCategory(req.params.id);
       if (!category) {
@@ -796,13 +783,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Merchant billing routes
-  app.get('/api/admin/billings', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/billings', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).json({ message: "Access denied" });
-      }
       const billings = await storage.getAllBillings();
       res.json(billings);
     } catch (error) {
@@ -811,13 +793,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/billings/:merchantId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/billings/:merchantId', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).json({ message: "Access denied" });
-      }
       const billings = await storage.getBillingsByMerchant(req.params.merchantId);
       res.json(billings);
     } catch (error) {
@@ -828,13 +805,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Generate billings for all merchants for the current period
   // Called on 15th and 30th of each month
-  app.post('/api/admin/billings/generate', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/billings/generate', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).json({ message: "Access denied" });
-      }
 
       const now = new Date();
       const day = now.getDate();
@@ -930,19 +902,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/billings/:id/status', isAuthenticated, async (req: any, res) => {
+  // Zod schema for billing status validation
+  const updateBillingStatusSchema = z.object({
+    status: z.enum(["pending", "paid", "overdue"], { 
+      errorMap: () => ({ message: "Status must be pending, paid, or overdue" }) 
+    }),
+  });
+
+  app.patch('/api/admin/billings/:id/status', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).json({ message: "Access denied" });
+      const validation = updateBillingStatusSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
       }
 
-      const { status } = req.body;
-      if (!["pending", "paid", "overdue"].includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
-      }
-
+      const { status } = validation.data;
       const paidAt = status === "paid" ? new Date() : undefined;
       const billing = await storage.updateBillingStatus(req.params.id, status, paidAt);
       if (!billing) {

@@ -156,3 +156,26 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return;
   }
 };
+
+export const requireRole = (...allowedRoles: string[]): RequestHandler => {
+  return async (req, res, next) => {
+    const user = req.user as any;
+    if (!user?.claims?.sub) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userId = user.claims.sub;
+    const dbUser = await storage.getUser(userId);
+    
+    if (!dbUser) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (!allowedRoles.includes(dbUser.role)) {
+      return res.status(403).json({ message: "Access denied: insufficient permissions" });
+    }
+
+    (req as any).dbUser = dbUser;
+    return next();
+  };
+};
