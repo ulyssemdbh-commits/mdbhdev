@@ -6,6 +6,7 @@ import {
   cashbackEntries,
   cashbackTransfers,
   merchantCategories,
+  merchantBillings,
   type User,
   type UpsertUser,
   type Merchant,
@@ -20,6 +21,8 @@ import {
   type InsertCashbackTransfer,
   type MerchantCategory,
   type InsertMerchantCategory,
+  type MerchantBilling,
+  type InsertMerchantBilling,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
@@ -88,6 +91,14 @@ export interface IStorage {
   createCategory(category: InsertMerchantCategory): Promise<MerchantCategory>;
   updateCategory(id: string, data: Partial<InsertMerchantCategory>): Promise<MerchantCategory | undefined>;
   deleteCategory(id: string): Promise<boolean>;
+  
+  // Merchant billing operations
+  getAllBillings(): Promise<MerchantBilling[]>;
+  getBillingsByMerchant(merchantId: string): Promise<MerchantBilling[]>;
+  getBilling(id: string): Promise<MerchantBilling | undefined>;
+  createBilling(billing: InsertMerchantBilling): Promise<MerchantBilling>;
+  updateBillingStatus(id: string, status: string, paidAt?: Date): Promise<MerchantBilling | undefined>;
+  getTransactionsForPeriod(merchantId: string, periodStart: Date, periodEnd: Date): Promise<Transaction[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -408,6 +419,51 @@ export class DatabaseStorage implements IStorage {
       .where(eq(merchantCategories.id, id))
       .returning();
     return !!deleted;
+  }
+
+  // Merchant billing operations
+  async getAllBillings(): Promise<MerchantBilling[]> {
+    return db.select().from(merchantBillings).orderBy(desc(merchantBillings.createdAt));
+  }
+
+  async getBillingsByMerchant(merchantId: string): Promise<MerchantBilling[]> {
+    return db.select().from(merchantBillings)
+      .where(eq(merchantBillings.merchantId, merchantId))
+      .orderBy(desc(merchantBillings.createdAt));
+  }
+
+  async getBilling(id: string): Promise<MerchantBilling | undefined> {
+    const [billing] = await db.select().from(merchantBillings).where(eq(merchantBillings.id, id));
+    return billing;
+  }
+
+  async createBilling(billing: InsertMerchantBilling): Promise<MerchantBilling> {
+    const [created] = await db.insert(merchantBillings).values(billing).returning();
+    return created;
+  }
+
+  async updateBillingStatus(id: string, status: string, paidAt?: Date): Promise<MerchantBilling | undefined> {
+    const updateData: any = { status };
+    if (paidAt) {
+      updateData.paidAt = paidAt;
+    }
+    const [updated] = await db
+      .update(merchantBillings)
+      .set(updateData)
+      .where(eq(merchantBillings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getTransactionsForPeriod(merchantId: string, periodStart: Date, periodEnd: Date): Promise<Transaction[]> {
+    return db.select().from(transactions)
+      .where(and(
+        eq(transactions.merchantId, merchantId),
+        eq(transactions.status, "completed"),
+        gte(transactions.createdAt, periodStart),
+        sql`${transactions.createdAt} <= ${periodEnd}`
+      ))
+      .orderBy(desc(transactions.createdAt));
   }
 }
 

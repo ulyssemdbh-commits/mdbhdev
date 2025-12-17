@@ -96,6 +96,23 @@ export const merchantCategories = pgTable("merchant_categories", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Merchant billing periods - bills generated on 15th and 30th of each month
+export const merchantBillings = pgTable("merchant_billings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  merchantId: varchar("merchant_id").references(() => merchants.id).notNull(),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  totalSales: decimal("total_sales", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  cashbackAmount: decimal("cashback_amount", { precision: 10, scale: 2 }).default("0.00").notNull(), // 10%
+  revFeeAmount: decimal("rev_fee_amount", { precision: 10, scale: 2 }).default("0.00").notNull(), // 3%
+  tvaAmount: decimal("tva_amount", { precision: 10, scale: 2 }).default("0.00").notNull(), // 20% of rev fee
+  totalBilled: decimal("total_billed", { precision: 10, scale: 2 }).default("0.00").notNull(), // total 13%
+  status: text("status").notNull().default("pending"), // pending, paid, overdue
+  dueDate: timestamp("due_date").notNull(),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const upsertUserSchema = createInsertSchema(users);
 
 export type UpsertUser = typeof users.$inferInsert;
@@ -150,3 +167,12 @@ export const insertMerchantCategorySchema = createInsertSchema(merchantCategorie
 
 export type InsertMerchantCategory = z.infer<typeof insertMerchantCategorySchema>;
 export type MerchantCategory = typeof merchantCategories.$inferSelect;
+
+export const insertMerchantBillingSchema = createInsertSchema(merchantBillings).omit({
+  id: true,
+  createdAt: true,
+  paidAt: true,
+});
+
+export type InsertMerchantBilling = z.infer<typeof insertMerchantBillingSchema>;
+export type MerchantBilling = typeof merchantBillings.$inferSelect;
