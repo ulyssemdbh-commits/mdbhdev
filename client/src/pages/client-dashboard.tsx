@@ -171,6 +171,9 @@ export default function ClientDashboard() {
                 </motion.div>
               )}
               <motion.div variants={fadeInUp}>
+                <CashbackTransfer />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
                 <AccountSection user={typedUser || null} />
               </motion.div>
             </motion.div>
@@ -271,25 +274,6 @@ export default function ClientDashboard() {
             </motion.div>
           )}
 
-          {activeTab === "partager" && (
-            <motion.div
-              key="partager"
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={fadeInUp}
-              transition={{ duration: 0.2 }}
-              className="space-y-4"
-            >
-              <motion.h2 variants={fadeInUp} className="text-xl font-bold">Partager mon cashback</motion.h2>
-              <p className="text-sm text-muted-foreground">
-                Scannez le QR code d'un autre membre pour lui transférer du cashback
-              </p>
-              <motion.div variants={fadeInUp}>
-                <CashbackTransfer />
-              </motion.div>
-            </motion.div>
-          )}
         </AnimatePresence>
       </main>
     </div>
