@@ -15,6 +15,7 @@ interface MerchantFiltersProps {
   activeCategory: string;
   onCategoryChange: (category: string) => void;
   onProximitySort?: () => void;
+  usedCategories?: string[];
 }
 
 export function MerchantFilters({
@@ -23,10 +24,15 @@ export function MerchantFilters({
   activeCategory,
   onCategoryChange,
   onProximitySort,
+  usedCategories,
 }: MerchantFiltersProps) {
-  const { data: categories = [] } = useQuery<Category[]>({
+  const { data: allCategories = [] } = useQuery<Category[]>({
     queryKey: ['/api/merchant-categories'],
   });
+
+  const categories = usedCategories 
+    ? allCategories.filter(cat => usedCategories.includes(cat.name))
+    : allCategories;
 
   return (
     <div className="space-y-3">

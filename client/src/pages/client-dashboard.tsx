@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/shared/Header";
@@ -111,6 +111,12 @@ export default function ClientDashboard() {
     hasBonsPlan: false,
   }));
 
+  // Get unique categories used by merchants
+  const usedCategories = useMemo(() => {
+    const categories = new Set(merchants.map(m => m.category));
+    return Array.from(categories);
+  }, [merchants]);
+
   const filteredMerchants = displayMerchants.filter((m) => {
     const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === "all" || m.category === categoryFilter;
@@ -185,6 +191,7 @@ export default function ClientDashboard() {
                 onSearchChange={setBonsPlansSearchQuery}
                 activeCategory={bonsPlansCategory}
                 onCategoryChange={setBonsPlansCategory}
+                usedCategories={usedCategories}
               />
               <motion.h2 variants={fadeInUp} className="text-xl font-bold">Bons Plans</motion.h2>
               <p className="text-sm text-muted-foreground">
@@ -233,6 +240,7 @@ export default function ClientDashboard() {
                 activeCategory={categoryFilter}
                 onCategoryChange={setCategoryFilter}
                 onProximitySort={() => console.log("Sort by proximity")}
+                usedCategories={usedCategories}
               />
               {merchantsLoading ? (
                 <div className="flex justify-center py-8">
