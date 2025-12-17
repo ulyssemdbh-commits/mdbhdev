@@ -77,7 +77,7 @@ export function MerchantManagement({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="max-h-[400px]">
+        <ScrollArea className="h-[400px]">
           <div className="px-6 pb-6 space-y-3">
             {filteredMerchants.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
