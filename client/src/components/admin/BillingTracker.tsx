@@ -80,6 +80,8 @@ export function BillingTracker({
       cashbackAmount: billing.cashbackAmount,
       revFeeAmount: billing.revFeeAmount,
       tvaAmount: billing.tvaAmount,
+      promotionCharges: (billing as any).promotionCharges,
+      promotionWeeks: (billing as any).promotionWeeks,
       totalBilled: billing.totalBilled,
       status: billing.status,
       dueDate: billing.dueDate,
@@ -139,7 +141,7 @@ export function BillingTracker({
           )}
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          13% = 10% Cashback + 3% Frais REV + TVA 20%
+          13% = 10% Cashback + 3% Frais REV + TVA 20% + Bons Plans (19€/sem.)
         </p>
       </CardHeader>
       <CardContent className="p-0">
@@ -170,10 +172,13 @@ export function BillingTracker({
                         <span>|</span>
                         <span>CA: {formatCurrency(billing.totalSales)}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
                         <span>Cashback: {formatCurrency(billing.cashbackAmount)}</span>
                         <span>Frais REV: {formatCurrency(billing.revFeeAmount)}</span>
                         <span>TVA: {formatCurrency(billing.tvaAmount)}</span>
+                        {(billing as any).promotionCharges && parseFloat((billing as any).promotionCharges) > 0 && (
+                          <span>Bons Plans: {formatCurrency((billing as any).promotionCharges)}</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -238,6 +243,14 @@ export function BillingTracker({
                                 <span className="text-muted-foreground">TVA (20%)</span>
                                 <span>{formatCurrency(billing.tvaAmount)}</span>
                               </div>
+                              {(billing as any).promotionCharges && parseFloat((billing as any).promotionCharges) > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Bons Plans ({(billing as any).promotionWeeks} sem. x 19€)
+                                  </span>
+                                  <span>{formatCurrency((billing as any).promotionCharges)}</span>
+                                </div>
+                              )}
                               <div className="flex justify-between border-t pt-2">
                                 <span className="font-semibold">Total à payer</span>
                                 <span className="font-semibold text-lg">{formatCurrency(billing.totalBilled)}</span>

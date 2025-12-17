@@ -16,6 +16,8 @@ interface BillingData {
   cashbackAmount: string;
   revFeeAmount: string;
   tvaAmount: string;
+  promotionCharges?: string;
+  promotionWeeks?: string;
   totalBilled: string;
   status: string;
   dueDate: Date | string;
@@ -87,15 +89,27 @@ export function generateBillingPdf(billing: BillingData): void {
     pageWidth - 20, 90, { align: "right" }
   );
   
+  const tableBody = [
+    ["Ventes totales de la période", "", "", formatCurrency(billing.totalSales)],
+    ["Cashback reversé aux clients", formatCurrency(billing.totalSales), "10%", formatCurrency(billing.cashbackAmount)],
+    ["Commission REV (HT)", formatCurrency(billing.totalSales), "3%", formatCurrency(billing.revFeeAmount)],
+    ["TVA sur commission", formatCurrency(billing.revFeeAmount), "20%", formatCurrency(billing.tvaAmount)],
+  ];
+  
+  if (billing.promotionCharges && parseFloat(billing.promotionCharges) > 0) {
+    const weeks = billing.promotionWeeks ? parseInt(billing.promotionWeeks) : 0;
+    tableBody.push([
+      `Bons Plans (${weeks} semaine${weeks > 1 ? 's' : ''})`,
+      "",
+      "19€/sem.",
+      formatCurrency(billing.promotionCharges)
+    ]);
+  }
+
   autoTable(doc, {
     startY: 120,
     head: [["Description", "Base", "Taux", "Montant"]],
-    body: [
-      ["Ventes totales de la période", "", "", formatCurrency(billing.totalSales)],
-      ["Cashback reversé aux clients", formatCurrency(billing.totalSales), "10%", formatCurrency(billing.cashbackAmount)],
-      ["Commission REV (HT)", formatCurrency(billing.totalSales), "3%", formatCurrency(billing.revFeeAmount)],
-      ["TVA sur commission", formatCurrency(billing.revFeeAmount), "20%", formatCurrency(billing.tvaAmount)],
-    ],
+    body: tableBody,
     foot: [["", "", "TOTAL À PAYER", formatCurrency(billing.totalBilled)]],
     theme: "striped",
     headStyles: { 
