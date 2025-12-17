@@ -1,11 +1,13 @@
-import { Receipt, Calendar, Building2, Check, Clock, AlertTriangle } from "lucide-react";
+import { Receipt, Calendar, Building2, Check, Clock, AlertTriangle, Download, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { MerchantBilling, Merchant } from "@shared/schema";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { generateBillingPdf } from "@/lib/billingPdf";
 
 interface BillingTrackerProps {
   billings: MerchantBilling[];
@@ -54,9 +56,35 @@ export function BillingTracker({
     return `${format(startDate, "d", { locale: fr })} - ${format(endDate, "d MMM yyyy", { locale: fr })}`;
   };
 
+  const getMerchant = (merchantId: string) => {
+    return merchants.find(m => m.id === merchantId);
+  };
+
   const getMerchantName = (merchantId: string) => {
-    const merchant = merchants.find(m => m.id === merchantId);
+    const merchant = getMerchant(merchantId);
     return merchant?.name || "Commerçant inconnu";
+  };
+
+  const handleDownloadPdf = (billing: MerchantBilling) => {
+    const merchant = getMerchant(billing.merchantId);
+    generateBillingPdf({
+      id: billing.id,
+      merchantName: merchant?.name || "Commerçant inconnu",
+      merchantAddress: merchant?.address || undefined,
+      merchantCity: merchant?.city || undefined,
+      merchantPostalCode: merchant?.postalCode || undefined,
+      merchantSiret: merchant?.siret || undefined,
+      periodStart: billing.periodStart,
+      periodEnd: billing.periodEnd,
+      totalSales: billing.totalSales,
+      cashbackAmount: billing.cashbackAmount,
+      revFeeAmount: billing.revFeeAmount,
+      tvaAmount: billing.tvaAmount,
+      totalBilled: billing.totalBilled,
+      status: billing.status,
+      dueDate: billing.dueDate,
+      paidAt: billing.paidAt,
+    });
   };
 
   const totalPending = billings
@@ -148,7 +176,7 @@ export function BillingTracker({
                         <span>TVA: {formatCurrency(billing.tvaAmount)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Badge className={config.className}>
                         <StatusIcon className="w-3 h-3 mr-1" />
                         {config.label}
@@ -156,6 +184,94 @@ export function BillingTracker({
                       <span className="font-semibold tabular-nums text-lg">
                         {formatCurrency(billing.totalBilled)}
                       </span>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            data-testid={`button-view-billing-${billing.id}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-lg">
+                          <DialogHeader>
+                            <DialogTitle>Détails de la facture</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-semibold text-lg">{getMerchantName(billing.merchantId)}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Facture N° REV-{billing.id.toString().padStart(6, '0')}
+                                </p>
+                              </div>
+                              <Badge className={config.className}>
+                                <StatusIcon className="w-3 h-3 mr-1" />
+                                {config.label}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Période</p>
+                                <p className="font-medium">{formatPeriod(billing.periodStart, billing.periodEnd)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Échéance</p>
+                                <p className="font-medium">{format(new Date(billing.dueDate), "d MMM yyyy", { locale: fr })}</p>
+                              </div>
+                            </div>
+                            <div className="border-t pt-4 space-y-2">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Ventes totales</span>
+                                <span className="font-medium">{formatCurrency(billing.totalSales)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Cashback (10%)</span>
+                                <span>{formatCurrency(billing.cashbackAmount)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Commission REV (3%)</span>
+                                <span>{formatCurrency(billing.revFeeAmount)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">TVA (20%)</span>
+                                <span>{formatCurrency(billing.tvaAmount)}</span>
+                              </div>
+                              <div className="flex justify-between border-t pt-2">
+                                <span className="font-semibold">Total à payer</span>
+                                <span className="font-semibold text-lg">{formatCurrency(billing.totalBilled)}</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4">
+                              <Button
+                                variant="outline"
+                                onClick={() => handleDownloadPdf(billing)}
+                                data-testid={`button-download-pdf-${billing.id}`}
+                              >
+                                <Download className="w-4 h-4 mr-2" />
+                                Télécharger PDF
+                              </Button>
+                              {billing.status === "pending" && (
+                                <Button
+                                  onClick={() => onMarkAsPaid(billing.id)}
+                                  data-testid={`button-mark-paid-dialog-${billing.id}`}
+                                >
+                                  Marquer payée
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDownloadPdf(billing)}
+                        data-testid={`button-download-billing-${billing.id}`}
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
                       {billing.status === "pending" && (
                         <Button
                           size="sm"
