@@ -134,7 +134,7 @@ export default function ClientDashboard() {
     ? `${typedUser.firstName || ""} ${typedUser.lastName || ""}`.trim() || typedUser.email || "Client"
     : "Client";
 
-  const clientRevId = typedUser?.revId || "REVID00000000";
+  const clientRevId = typedUser?.revId || "REVid-000000";
 
   const isLoading = merchantsLoading || balancesLoading || transactionsLoading;
 

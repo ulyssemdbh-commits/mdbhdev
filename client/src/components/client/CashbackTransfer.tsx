@@ -435,7 +435,7 @@ export function CashbackTransfer() {
                 for (let i = 0; i < 6; i++) {
                   code += chars.charAt(Math.floor(Math.random() * chars.length));
                 }
-                handleScanResult(`REVID${code}`);
+                handleScanResult(`REVid-${code}`);
               }}
               data-testid="button-simulate-scan"
             >

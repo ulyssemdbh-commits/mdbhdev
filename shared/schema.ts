@@ -3,19 +3,19 @@ import { pgTable, text, varchar, decimal, timestamp, boolean, index, uniqueIndex
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Generate unique REV ID: REVID + 6 alphanumeric characters
+// Generate unique REV ID: REVid- + 6 alphanumeric characters
 export function generateRevId(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';
   for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return `REVID${code}`;
+  return `REVid-${code}`;
 }
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  revId: varchar("rev_id", { length: 11 }).unique(),
+  revId: varchar("rev_id", { length: 12 }).unique(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),

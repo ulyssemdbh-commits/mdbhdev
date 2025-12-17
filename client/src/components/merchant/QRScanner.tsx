@@ -50,13 +50,13 @@ export function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
   };
 
   const simulateScan = () => {
-    // Simulate scanning a REVID QR code (6 alphanumeric chars)
+    // Simulate scanning a REVid- QR code (6 alphanumeric chars)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    onScanSuccess(`REVID${code}`);
+    onScanSuccess(`REVid-${code}`);
   };
 
   if (showManualInput) {
@@ -72,7 +72,7 @@ export function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
           </div>
           <div className="space-y-3">
             <Input
-              placeholder="Code client (ex: REVIDABC123)"
+              placeholder="Code client (ex: REVid-ABC123)"
               value={manualInput}
               onChange={(e) => setManualInput(e.target.value)}
               data-testid="input-manual-client-code"

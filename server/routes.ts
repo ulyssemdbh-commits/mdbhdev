@@ -337,8 +337,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       let user;
       
-      // Check if it's a REV ID format (REVID + 6 alphanumeric)
-      if (id.startsWith('REVID') && id.length === 11) {
+      // Check if it's a REV ID format (REVid- + 6 alphanumeric)
+      if (id.startsWith('REVid-') && id.length === 12) {
         user = await storage.getUserByRevId(id);
       } else {
         user = await storage.getUser(id);
