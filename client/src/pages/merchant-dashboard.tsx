@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Camera, BarChart3, Loader2, Receipt } from "lucide-react";
+import { Camera, BarChart3, Loader2, Receipt, Tag } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { AccountSection } from "@/components/shared/AccountSection";
 import { QRScanner } from "@/components/merchant/QRScanner";
 import { TransactionForm } from "@/components/merchant/TransactionForm";
 import { MerchantTransactionList, type MerchantTransaction } from "@/components/merchant/MerchantTransactionList";
 import { MerchantBillings } from "@/components/merchant/MerchantBillings";
+import { MerchantPromotions } from "@/components/merchant/MerchantPromotions";
 import MerchantStatistics from "@/pages/merchant-statistics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Merchant, Transaction } from "@shared/schema";
 
-type MerchantView = "scanner" | "form" | "dashboard" | "statistics" | "billings";
+type MerchantView = "scanner" | "form" | "dashboard" | "statistics" | "billings" | "promotions";
 
 interface ClientCashbackInfo {
   clientId: string;
@@ -155,6 +156,17 @@ export default function MerchantDashboard() {
     );
   }
 
+  if (view === "promotions") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title={merchantName} />
+        <main className="container max-w-lg px-4 py-6">
+          <MerchantPromotions onBack={() => setView("dashboard")} />
+        </main>
+      </div>
+    );
+  }
+
   const isLoading = merchantLoading || transactionsLoading;
 
   return (
@@ -208,6 +220,16 @@ export default function MerchantDashboard() {
             >
               <Receipt className="w-5 h-5" />
               Mes factures REV
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setView("promotions")}
+              data-testid="button-view-promotions"
+            >
+              <Tag className="w-5 h-5" />
+              Mes Bons Plans
             </Button>
 
             <AccountSection 
