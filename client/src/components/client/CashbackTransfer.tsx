@@ -20,7 +20,7 @@ interface RecipientInfo {
 }
 
 export function CashbackTransfer() {
-  const [step, setStep] = useState<"scan" | "confirm" | "success">("scan");
+  const [step, setStep] = useState<"idle" | "scan" | "confirm" | "success">("idle");
   const [recipientId, setRecipientId] = useState<string | null>(null);
   const [recipientInfo, setRecipientInfo] = useState<RecipientInfo | null>(null);
   const [selectedMerchantId, setSelectedMerchantId] = useState<string>("");
@@ -176,7 +176,7 @@ export function CashbackTransfer() {
   };
 
   const resetTransfer = () => {
-    setStep("scan");
+    setStep("idle");
     setRecipientId(null);
     setRecipientInfo(null);
     setSelectedMerchantId("");
@@ -190,6 +190,24 @@ export function CashbackTransfer() {
     const name = `${recipientInfo.firstName || ""} ${recipientInfo.lastName || ""}`.trim();
     return name || recipientInfo.email || "Utilisateur";
   };
+
+  if (step === "idle") {
+    return (
+      <Card className="border-card-border">
+        <CardContent className="p-4">
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => setStep("scan")}
+            data-testid="button-start-transfer"
+          >
+            <Send className="w-4 h-4" />
+            Transférer du cashback
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (step === "success") {
     return (
@@ -217,12 +235,12 @@ export function CashbackTransfer() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setStep("scan")}
+            onClick={() => setStep("idle")}
             className="gap-2"
             data-testid="button-back-to-scan"
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour
+            Annuler
           </Button>
 
           <div className="text-center space-y-2">
@@ -349,10 +367,13 @@ export function CashbackTransfer() {
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => setShowManualInput(false)}
+                onClick={() => {
+                  setShowManualInput(false);
+                  setStep("idle");
+                }}
                 data-testid="button-back-to-camera"
               >
-                Retour au scan
+                Annuler
               </Button>
               <Button
                 className="flex-1"
@@ -398,26 +419,36 @@ export function CashbackTransfer() {
             </p>
           </div>
         </div>
-        <div className="p-4 flex gap-2">
+        <div className="p-4 space-y-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={() => setShowManualInput(true)}
+              data-testid="button-manual-entry"
+            >
+              <Keyboard className="w-4 h-4" />
+              Saisie manuelle
+            </Button>
+            <Button
+              className="flex-1 gap-2"
+              onClick={() => {
+                const mockUserId = "mock-" + Math.random().toString(36).substr(2, 9);
+                handleScanResult(mockUserId);
+              }}
+              data-testid="button-simulate-scan"
+            >
+              <Camera className="w-4 h-4" />
+              Simuler scan
+            </Button>
+          </div>
           <Button
-            variant="outline"
-            className="flex-1 gap-2"
-            onClick={() => setShowManualInput(true)}
-            data-testid="button-manual-entry"
+            variant="ghost"
+            className="w-full"
+            onClick={() => setStep("idle")}
+            data-testid="button-cancel-scan"
           >
-            <Keyboard className="w-4 h-4" />
-            Saisie manuelle
-          </Button>
-          <Button
-            className="flex-1 gap-2"
-            onClick={() => {
-              const mockUserId = "mock-" + Math.random().toString(36).substr(2, 9);
-              handleScanResult(mockUserId);
-            }}
-            data-testid="button-simulate-scan"
-          >
-            <Camera className="w-4 h-4" />
-            Simuler scan
+            Annuler
           </Button>
         </div>
       </CardContent>
