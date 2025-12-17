@@ -26,6 +26,7 @@ export function ClientsListDialog({ open, onOpenChange }: ClientsListDialogProps
   const { toast } = useToast();
   const [editingClient, setEditingClient] = useState<User | null>(null);
   const [deletingClient, setDeletingClient] = useState<User | null>(null);
+  const [viewingClient, setViewingClient] = useState<User | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", email: "", role: "" });
 
   const { data: clients = [], isLoading } = useQuery<User[]>({
@@ -105,8 +106,9 @@ export function ClientsListDialog({ open, onOpenChange }: ClientsListDialogProps
                 {clients.map((client) => (
                   <div
                     key={client.id}
-                    className="flex items-center gap-4 p-4 rounded-md bg-muted/50"
+                    className="flex items-center gap-4 p-4 rounded-md bg-muted/50 cursor-pointer hover-elevate"
                     data-testid={`client-row-${client.id}`}
+                    onClick={() => !editingClient && setViewingClient(client)}
                   >
                     {editingClient?.id === client.id ? (
                       <div className="flex-1 space-y-3">
@@ -194,10 +196,10 @@ export function ClientsListDialog({ open, onOpenChange }: ClientsListDialogProps
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => startEdit(client)} data-testid={`button-edit-client-${client.id}`}>
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); startEdit(client); }} data-testid={`button-edit-client-${client.id}`}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setDeletingClient(client)} data-testid={`button-delete-client-${client.id}`}>
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setDeletingClient(client); }} data-testid={`button-delete-client-${client.id}`}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>
@@ -232,6 +234,97 @@ export function ClientsListDialog({ open, onOpenChange }: ClientsListDialogProps
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!viewingClient} onOpenChange={(open) => !open && setViewingClient(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-600" />
+              Informations du compte
+            </DialogTitle>
+          </DialogHeader>
+          {viewingClient && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  {viewingClient.profileImageUrl ? (
+                    <img
+                      src={viewingClient.profileImageUrl}
+                      alt={viewingClient.firstName || "Client"}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <Users className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-lg">
+                    {viewingClient.firstName || viewingClient.lastName
+                      ? `${viewingClient.firstName || ""} ${viewingClient.lastName || ""}`.trim()
+                      : "Client"}
+                  </p>
+                  <Badge variant={viewingClient.role === "admin" ? "default" : "secondary"}>
+                    {viewingClient.role === "admin" ? "Admin" : viewingClient.role === "merchant" ? "Commerçant" : "Client"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-muted/50 rounded-md p-4">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Informations de connexion</h4>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">ID Utilisateur:</span>
+                    <span className="font-mono text-sm bg-background px-2 py-1 rounded" data-testid="text-view-client-id">
+                      {viewingClient.id}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Email:</span>
+                    <span className="text-sm" data-testid="text-view-client-email">
+                      {viewingClient.email || "Non renseigné"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Prénom:</span>
+                    <span className="text-sm" data-testid="text-view-client-firstname">
+                      {viewingClient.firstName || "Non renseigné"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Nom:</span>
+                    <span className="text-sm" data-testid="text-view-client-lastname">
+                      {viewingClient.lastName || "Non renseigné"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Date d'inscription:</span>
+                    <span className="text-sm" data-testid="text-view-client-created">
+                      {viewingClient.createdAt
+                        ? format(new Date(viewingClient.createdAt), "dd MMMM yyyy", { locale: fr })
+                        : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewingClient(null)} data-testid="button-close-client-detail">
+                  Fermer
+                </Button>
+                <Button onClick={() => { startEdit(viewingClient); setViewingClient(null); }} data-testid="button-edit-from-detail">
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Modifier
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
