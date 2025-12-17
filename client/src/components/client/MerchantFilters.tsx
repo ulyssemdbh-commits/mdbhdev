@@ -1,25 +1,21 @@
 import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 
-export type CategoryFilter = "all" | "alimentation" | "sante" | "services" | "restauration" | "mode";
+interface Category {
+  id: number;
+  name: string;
+  description: string | null;
+}
 
 interface MerchantFiltersProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  activeCategory: CategoryFilter;
-  onCategoryChange: (category: CategoryFilter) => void;
+  activeCategory: string;
+  onCategoryChange: (category: string) => void;
   onProximitySort?: () => void;
 }
-
-const categories = [
-  { id: "all" as const, label: "Tous" },
-  { id: "alimentation" as const, label: "Alimentation" },
-  { id: "sante" as const, label: "Santé" },
-  { id: "restauration" as const, label: "Restauration" },
-  { id: "services" as const, label: "Services" },
-  { id: "mode" as const, label: "Mode" },
-];
 
 export function MerchantFilters({
   searchQuery,
@@ -28,6 +24,10 @@ export function MerchantFilters({
   onCategoryChange,
   onProximitySort,
 }: MerchantFiltersProps) {
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ['/api/merchant-categories'],
+  });
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -42,16 +42,25 @@ export function MerchantFilters({
         />
       </div>
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <Button
+          size="sm"
+          variant={activeCategory === "all" ? "default" : "secondary"}
+          onClick={() => onCategoryChange("all")}
+          className="flex-shrink-0"
+          data-testid="filter-category-all"
+        >
+          Tous
+        </Button>
         {categories.map((cat) => (
           <Button
             key={cat.id}
             size="sm"
-            variant={activeCategory === cat.id ? "default" : "secondary"}
-            onClick={() => onCategoryChange(cat.id)}
+            variant={activeCategory === cat.name ? "default" : "secondary"}
+            onClick={() => onCategoryChange(cat.name)}
             className="flex-shrink-0"
             data-testid={`filter-category-${cat.id}`}
           >
-            {cat.label}
+            {cat.name}
           </Button>
         ))}
         <Button

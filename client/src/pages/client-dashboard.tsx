@@ -8,7 +8,7 @@ import { BalanceCard } from "@/components/client/BalanceCard";
 import { TransactionList, type Transaction } from "@/components/client/TransactionList";
 import { BonPlanCard, type BonPlan } from "@/components/client/BonPlanCard";
 import { MerchantCard, type Merchant } from "@/components/client/MerchantCard";
-import { MerchantFilters, type CategoryFilter } from "@/components/client/MerchantFilters";
+import { MerchantFilters } from "@/components/client/MerchantFilters";
 import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavigation";
 import { CashbackTransfer } from "@/components/client/CashbackTransfer";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,9 +39,9 @@ const mockBonsPlans: BonPlan[] = [
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState<ClientTab>("compte");
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [bonsPlansSearchQuery, setBonsPlansSearchQuery] = useState("");
-  const [bonsPlansCategory, setBonsPlansCategory] = useState<CategoryFilter>("all");
+  const [bonsPlansCategory, setBonsPlansCategory] = useState<string>("all");
 
   const { user } = useAuth();
   const typedUser = user as User | undefined;
@@ -113,14 +113,14 @@ export default function ClientDashboard() {
 
   const filteredMerchants = displayMerchants.filter((m) => {
     const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || m.category.toLowerCase() === categoryFilter;
+    const matchesCategory = categoryFilter === "all" || m.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
   const filteredBonsPlans = mockBonsPlans.filter((bp) => {
     const matchesSearch = bp.title.toLowerCase().includes(bonsPlansSearchQuery.toLowerCase()) ||
       bp.merchantName.toLowerCase().includes(bonsPlansSearchQuery.toLowerCase());
-    const matchesCategory = bonsPlansCategory === "all" || bp.category.toLowerCase() === bonsPlansCategory;
+    const matchesCategory = bonsPlansCategory === "all" || bp.category === bonsPlansCategory;
     return matchesSearch && matchesCategory;
   });
 
