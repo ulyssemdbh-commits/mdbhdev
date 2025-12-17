@@ -119,9 +119,22 @@ export class DatabaseStorage implements IStorage {
     // Check if user exists to determine if we need to generate a revId
     const existingUser = userData.id ? await this.getUser(userData.id) : undefined;
     
+    // Generate a unique REVid if needed
+    let revId = existingUser?.revId;
+    if (!revId) {
+      // Keep generating until we find a unique one
+      let attempts = 0;
+      do {
+        revId = generateRevId();
+        const existing = await this.getUserByRevId(revId);
+        if (!existing) break;
+        attempts++;
+      } while (attempts < 10);
+    }
+    
     const dataWithRevId = {
       ...userData,
-      revId: existingUser?.revId || generateRevId(),
+      revId,
     };
     
     const [user] = await db
