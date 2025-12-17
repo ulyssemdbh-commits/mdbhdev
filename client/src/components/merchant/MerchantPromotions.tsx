@@ -90,8 +90,8 @@ export function MerchantPromotions({ onBack }: MerchantPromotionsProps) {
     mutationFn: async (data: PromotionFormData) => {
       return apiRequest("POST", "/api/merchant/promotions", data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/merchant/promotions"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/merchant/promotions"], refetchType: "all" });
       toast({ title: "Bon plan créé", description: "Votre offre est maintenant active" });
       closeDialog();
     },
@@ -104,8 +104,8 @@ export function MerchantPromotions({ onBack }: MerchantPromotionsProps) {
     mutationFn: async ({ id, data }: { id: string; data: Partial<PromotionFormData> }) => {
       return apiRequest("PATCH", `/api/merchant/promotions/${id}`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/merchant/promotions"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/merchant/promotions"], refetchType: "all" });
       toast({ title: "Bon plan modifié", description: "Les modifications ont été enregistrées" });
       closeDialog();
     },
@@ -118,8 +118,8 @@ export function MerchantPromotions({ onBack }: MerchantPromotionsProps) {
     mutationFn: async (id: string) => {
       return apiRequest("DELETE", `/api/merchant/promotions/${id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/merchant/promotions"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/merchant/promotions"], refetchType: "all" });
       toast({ title: "Bon plan supprimé", description: "L'offre a été supprimée" });
       setDeletePromoId(null);
     },
