@@ -350,6 +350,13 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
     enabled: open,
   });
 
+  const { data: merchantUsers = [] } = useQuery<User[]>({
+    queryKey: ["/api/admin/merchant-users"],
+    enabled: open,
+  });
+
+  const userMap = new Map(merchantUsers.map((u) => [u.id, u]));
+
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<Merchant> }) => {
       return apiRequest("PATCH", `/api/admin/merchants/${data.id}`, data.updates);
@@ -526,9 +533,15 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1" data-testid={`text-merchant-userid-${merchant.id}`}>
-                            ID utilisateur: {merchant.userId}
-                          </div>
+                          {(() => {
+                            const user = userMap.get(merchant.userId);
+                            return user?.email ? (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1" data-testid={`text-merchant-email-${merchant.id}`}>
+                                <Mail className="w-3 h-3" />
+                                {user.email}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                         <div className="text-right text-sm text-muted-foreground">
                           <Badge variant="outline">{merchant.category}</Badge>

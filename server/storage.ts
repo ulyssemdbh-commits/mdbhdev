@@ -86,6 +86,7 @@ export interface IStorage {
   getAllMerchantsWithStats(): Promise<any[]>;
   getAllMerchantsForAdmin(): Promise<Merchant[]>;
   getAllClients(): Promise<User[]>;
+  getAllMerchantUsers(): Promise<User[]>;
   
   // Admin CRUD operations
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
@@ -402,6 +403,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAllClients(): Promise<User[]> {
     return db.select().from(users).where(eq(users.role, "client")).orderBy(desc(users.createdAt));
+  }
+
+  async getAllMerchantUsers(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, "merchant")).orderBy(desc(users.createdAt));
   }
 
   // Admin CRUD operations

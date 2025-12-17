@@ -697,6 +697,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin API - Get all merchant users for admin panel
+  app.get('/api/admin/merchant-users', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const merchantUsers = await storage.getAllMerchantUsers();
+      res.json(merchantUsers);
+    } catch (error) {
+      console.error("Error fetching merchant users for admin:", error);
+      res.status(500).json({ message: "Failed to fetch merchant users" });
+    }
+  });
+
   // Admin API - Update client
   app.patch('/api/admin/clients/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
