@@ -1074,6 +1074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // - 3% REV fee (before TVA)
         // - 20% TVA on the REV fee = 0.6% of sales
         // - Total ~13.6% of sales
+        // - Plus 19€ per week per active promotion
         const totalSales = periodTransactions.reduce(
           (sum, tx) => sum + parseFloat(tx.amount),
           0
@@ -1081,7 +1082,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const cashbackAmount = totalSales * 0.10; // 10% cashback
         const revFeeAmount = totalSales * 0.03; // 3% REV fee
         const tvaAmount = revFeeAmount * 0.20; // 20% TVA on REV fee only
-        const totalBilled = cashbackAmount + revFeeAmount + tvaAmount;
+        
+        // Calculate promotion charges: 19€ per week per active promotion
+        const promotionWeeks = await storage.getPromotionWeeksForPeriod(
+          merchant.id,
+          periodStart,
+          periodEnd
+        );
+        const promotionCharges = promotionWeeks * 19; // 19€ per promotion-week
+        
+        const totalBilled = cashbackAmount + revFeeAmount + tvaAmount + promotionCharges;
 
         const billing = await storage.createBilling({
           merchantId: merchant.id,
@@ -1091,6 +1101,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cashbackAmount: cashbackAmount.toFixed(2),
           revFeeAmount: revFeeAmount.toFixed(2),
           tvaAmount: tvaAmount.toFixed(2),
+          promotionCharges: promotionCharges.toFixed(2),
+          promotionWeeks: promotionWeeks.toString(),
           totalBilled: totalBilled.toFixed(2),
           status: "pending",
           dueDate,
