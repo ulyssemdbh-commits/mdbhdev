@@ -841,10 +841,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       dueDate.setDate(dueDate.getDate() + 7);
 
       const allMerchants = await storage.getAllMerchantsForAdmin();
+      const existingBillings = await storage.getAllBillings();
       const createdBillings = [];
+      const skippedCount = { duplicate: 0, noTransactions: 0 };
 
       for (const merchant of allMerchants) {
         if (!merchant.isActive) continue;
+
+        // Check for duplicate billing for this merchant and period
+        const existingBilling = existingBillings.find(b => 
+          b.merchantId === merchant.id &&
+          new Date(b.periodStart).getTime() === periodStart.getTime() &&
+          new Date(b.periodEnd).getTime() === periodEnd.getTime()
+        );
+        
+        if (existingBilling) {
+          skippedCount.duplicate++;
+          continue;
+        }
 
         const periodTransactions = await storage.getTransactionsForPeriod(
           merchant.id,
@@ -852,19 +866,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           periodEnd
         );
 
-        if (periodTransactions.length === 0) continue;
+        if (periodTransactions.length === 0) {
+          skippedCount.noTransactions++;
+          continue;
+        }
 
-        // Calculate totals
-        // 13% total = 10% cashback + 3% REV fee (with 20% TVA on the 3%)
+        // Calculate totals:
+        // - 10% cashback (given to customer)
+        // - 3% REV fee (before TVA)
+        // - 20% TVA on the REV fee = 0.6% of sales
+        // - Total ~13.6% of sales
         const totalSales = periodTransactions.reduce(
           (sum, tx) => sum + parseFloat(tx.amount),
           0
         );
         const cashbackAmount = totalSales * 0.10; // 10% cashback
-        const revFeeBeforeTva = totalSales * 0.03; // 3% REV fee
-        const tvaAmount = revFeeBeforeTva * 0.20; // 20% TVA on REV fee
-        const revFeeAmount = revFeeBeforeTva; // 3% before TVA
-        const totalBilled = cashbackAmount + revFeeBeforeTva + tvaAmount; // ~13.6%
+        const revFeeAmount = totalSales * 0.03; // 3% REV fee
+        const tvaAmount = revFeeAmount * 0.20; // 20% TVA on REV fee only
+        const totalBilled = cashbackAmount + revFeeAmount + tvaAmount;
 
         const billing = await storage.createBilling({
           merchantId: merchant.id,
