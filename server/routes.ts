@@ -436,6 +436,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "completed",
       });
 
+      // Get merchant name for notifications
+      const merchant = await storage.getMerchant(merchantId);
+      const merchantName = merchant?.name || "un commerçant";
+      
+      // Get sender info for recipient notification
+      const sender = await storage.getUser(fromUserId);
+      const senderName = sender ? `${sender.firstName || ""} ${sender.lastName || ""}`.trim() || sender.email || "Un utilisateur" : "Un utilisateur";
+      
+      // Get recipient info for sender notification
+      const recipientName = `${recipient.firstName || ""} ${recipient.lastName || ""}`.trim() || recipient.email || "Un utilisateur";
+
+      // Create notification for sender
+      await storage.createNotification({
+        userId: fromUserId,
+        type: "transfer_sent",
+        title: "Transfert envoyé",
+        message: `Vous avez envoyé ${amountNum.toFixed(2)}€ de cashback à ${recipientName} (${merchantName})`,
+        isRead: false,
+      });
+
+      // Create notification for recipient
+      await storage.createNotification({
+        userId: toUserId,
+        type: "transfer_received",
+        title: "Cashback reçu",
+        message: `Vous avez reçu ${amountNum.toFixed(2)}€ de cashback de ${senderName} (${merchantName})`,
+        isRead: false,
+      });
+
       res.json(transfer);
     } catch (error) {
       console.error("Error transferring cashback:", error);
@@ -451,6 +480,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching cashback transfers:", error);
       res.status(500).json({ message: "Failed to fetch transfers" });
+    }
+  });
+
+  // Notifications API
+  app.get('/api/notifications', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifs = await storage.getNotificationsByUser(userId);
+      res.json(notifs);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get('/api/notifications/unread-count', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.post('/api/notifications/:id/read', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
+    try {
+      const notif = await storage.markNotificationAsRead(req.params.id);
+      if (!notif) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json(notif);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark as read" });
+    }
+  });
+
+  app.post('/api/notifications/mark-all-read', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all as read" });
     }
   });
 

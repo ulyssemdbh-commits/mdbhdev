@@ -128,6 +128,18 @@ export const merchantBillings = pgTable("merchant_billings", {
   uniqueIndex("merchant_billings_merchant_period_idx").on(table.merchantId, table.periodStart, table.periodEnd),
 ]);
 
+// Notifications for users
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(), // transfer_sent, transfer_received, cashback_earned, etc.
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  metadata: text("metadata"), // JSON string for additional data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const upsertUserSchema = createInsertSchema(users);
 
 export type UpsertUser = typeof users.$inferInsert;
@@ -191,3 +203,11 @@ export const insertMerchantBillingSchema = createInsertSchema(merchantBillings).
 
 export type InsertMerchantBilling = z.infer<typeof insertMerchantBillingSchema>;
 export type MerchantBilling = typeof merchantBillings.$inferSelect;
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;

@@ -1,14 +1,16 @@
 import { MapPin, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "@/components/client/NotificationBell";
 
 interface HeaderProps {
   title?: string;
   showLogout?: boolean;
+  showNotifications?: boolean;
   onLogout?: () => void;
 }
 
-export function Header({ title = "REV", showLogout = true, onLogout }: HeaderProps) {
+export function Header({ title = "REV", showLogout = true, showNotifications = true, onLogout }: HeaderProps) {
   const handleLogout = async () => {
     if (onLogout) {
       onLogout();
@@ -30,6 +32,7 @@ export function Header({ title = "REV", showLogout = true, onLogout }: HeaderPro
         <span className="text-xl font-bold">{title}</span>
       </div>
       <div className="flex items-center gap-1">
+        {showNotifications && <NotificationBell />}
         <ThemeToggle />
         {showLogout && (
           <Button
