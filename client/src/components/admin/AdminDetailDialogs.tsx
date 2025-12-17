@@ -338,6 +338,7 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
   const { toast } = useToast();
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [deletingMerchant, setDeletingMerchant] = useState<Merchant | null>(null);
+  const [viewingMerchant, setViewingMerchant] = useState<Merchant | null>(null);
   const [editForm, setEditForm] = useState({ name: "", category: "", phone: "", address: "", isActive: true });
 
   const { data: merchants = [], isLoading } = useQuery<Merchant[]>({
@@ -507,41 +508,38 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
                       </div>
                     ) : (
                       <>
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                          <Store className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium" data-testid={`text-merchant-name-${merchant.id}`}>
-                              {merchant.name}
-                            </p>
-                            <Badge variant={merchant.isActive ? "default" : "secondary"}>
-                              {merchant.isActive ? "Actif" : "Inactif"}
-                            </Badge>
+                        <div 
+                          className="flex items-center gap-4 flex-1 cursor-pointer hover-elevate rounded-md p-1 -m-1"
+                          onClick={() => setViewingMerchant(merchant)}
+                          data-testid={`button-view-merchant-${merchant.id}`}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <Store className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
-                            {merchant.address && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {merchant.address}
-                              </span>
-                            )}
-                            {merchant.phone && (
-                              <span className="flex items-center gap-1">
-                                <Phone className="w-3 h-3" />
-                                {merchant.phone}
-                              </span>
-                            )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium" data-testid={`text-merchant-name-${merchant.id}`}>
+                                {merchant.name}
+                              </p>
+                              <Badge variant={merchant.isActive ? "default" : "secondary"}>
+                                {merchant.isActive ? "Actif" : "Inactif"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
+                              {merchant.address && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {merchant.address}
+                                </span>
+                              )}
+                              {merchant.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  {merchant.phone}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {(() => {
-                            const user = userMap.get(merchant.userId);
-                            return user?.email ? (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1" data-testid={`text-merchant-email-${merchant.id}`}>
-                                <Mail className="w-3 h-3" />
-                                {user.email}
-                              </div>
-                            ) : null;
-                          })()}
                         </div>
                         <div className="text-right text-sm text-muted-foreground">
                           <Badge variant="outline">{merchant.category}</Badge>
@@ -585,6 +583,112 @@ export function MerchantsListDialog({ open, onOpenChange }: MerchantsListDialogP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!viewingMerchant} onOpenChange={(open) => !open && setViewingMerchant(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Store className="w-5 h-5 text-emerald-600" />
+              Informations du commerçant
+            </DialogTitle>
+          </DialogHeader>
+          {viewingMerchant && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <Store className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-lg" data-testid="text-view-merchant-name">
+                    {viewingMerchant.name}
+                  </p>
+                  <Badge variant={viewingMerchant.isActive ? "default" : "secondary"}>
+                    {viewingMerchant.isActive ? "Actif" : "Inactif"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-muted/50 rounded-md p-4">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Informations de connexion</h4>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">ID Commerçant:</span>
+                    <span className="font-mono text-sm bg-background px-2 py-1 rounded" data-testid="text-view-merchant-id">
+                      {viewingMerchant.id}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">ID Utilisateur:</span>
+                    <span className="font-mono text-sm bg-background px-2 py-1 rounded" data-testid="text-view-merchant-userid">
+                      {viewingMerchant.userId}
+                    </span>
+                  </div>
+                  
+                  {(() => {
+                    const user = userMap.get(viewingMerchant.userId);
+                    return (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Email:</span>
+                        <span className="text-sm" data-testid="text-view-merchant-email">
+                          {user?.email || "Non renseigné"}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-muted/50 rounded-md p-4">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Informations commerce</h4>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Catégorie:</span>
+                    <Badge variant="outline" data-testid="text-view-merchant-category">
+                      {viewingMerchant.category}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Téléphone:</span>
+                    <span className="text-sm" data-testid="text-view-merchant-phone">
+                      {viewingMerchant.phone || "Non renseigné"}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Adresse:</span>
+                    <span className="text-sm text-right max-w-[200px]" data-testid="text-view-merchant-address">
+                      {viewingMerchant.address || "Non renseignée"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Date de création:</span>
+                    <span className="text-sm" data-testid="text-view-merchant-created">
+                      {viewingMerchant.createdAt
+                        ? format(new Date(viewingMerchant.createdAt), "dd MMMM yyyy", { locale: fr })
+                        : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewingMerchant(null)} data-testid="button-close-merchant-detail">
+                  Fermer
+                </Button>
+                <Button onClick={() => { startEdit(viewingMerchant); setViewingMerchant(null); }} data-testid="button-edit-from-merchant-detail">
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Modifier
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
