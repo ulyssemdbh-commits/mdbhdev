@@ -10,6 +10,9 @@ export function QRCodeDisplay({ revId, clientName }: QRCodeDisplayProps) {
   return (
     <Card className="border-card-border">
       <CardContent className="flex flex-col items-center p-6 gap-4">
+        <p className="text-sm text-muted-foreground">
+          Présentez ce code à votre PartREV
+        </p>
         <div className="bg-white p-4 rounded-md">
           <QRCode
             value={revId}
@@ -24,9 +27,6 @@ export function QRCodeDisplay({ revId, clientName }: QRCodeDisplayProps) {
           </p>
           <p className="text-sm font-mono text-muted-foreground" data-testid="text-rev-id">
             {revId}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Présentez ce code en caisse
           </p>
         </div>
       </CardContent>
