@@ -122,6 +122,7 @@ export interface IStorage {
   createPromotion(promotion: InsertPromotion): Promise<Promotion>;
   updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<boolean>;
+  getPromotionWeeksForPeriod(merchantId: string, periodStart: Date, periodEnd: Date): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -591,6 +592,37 @@ export class DatabaseStorage implements IStorage {
   async deletePromotion(id: string): Promise<boolean> {
     const result = await db.delete(promotions).where(eq(promotions.id, id));
     return true;
+  }
+
+  async getPromotionWeeksForPeriod(merchantId: string, periodStart: Date, periodEnd: Date): Promise<number> {
+    const merchantPromos = await db.select().from(promotions)
+      .where(and(
+        eq(promotions.merchantId, merchantId),
+        eq(promotions.isActive, true),
+        sql`${promotions.startDate} <= ${periodEnd}`,
+        sql`${promotions.endDate} >= ${periodStart}`
+      ));
+    
+    let totalWeeks = 0;
+    const periodStartTime = periodStart.getTime();
+    const periodEndTime = periodEnd.getTime();
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    
+    for (const promo of merchantPromos) {
+      const promoStart = new Date(promo.startDate).getTime();
+      const promoEnd = new Date(promo.endDate).getTime();
+      
+      const overlapStart = Math.max(periodStartTime, promoStart);
+      const overlapEnd = Math.min(periodEndTime, promoEnd);
+      
+      if (overlapEnd > overlapStart) {
+        const overlapMs = overlapEnd - overlapStart;
+        const weeks = Math.ceil(overlapMs / msPerWeek);
+        totalWeeks += weeks;
+      }
+    }
+    
+    return totalWeeks;
   }
 }
 
