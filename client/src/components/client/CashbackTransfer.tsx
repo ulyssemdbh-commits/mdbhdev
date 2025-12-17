@@ -430,9 +430,12 @@ export function CashbackTransfer() {
             <Button
               className="flex-1 gap-2"
               onClick={() => {
-                const digits = Math.floor(10000000 + Math.random() * 90000000).toString();
-                const mockRevId = `REVID${digits}`;
-                handleScanResult(mockRevId);
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let code = '';
+                for (let i = 0; i < 6; i++) {
+                  code += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                handleScanResult(`REVID${code}`);
               }}
               data-testid="button-simulate-scan"
             >
