@@ -143,7 +143,7 @@ export default function ClientDashboard() {
       <Header title="REV" />
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <main className="container max-w-lg px-4 py-6">
+      <main className="container max-w-lg px-4 py-6 pb-24">
         <AnimatePresence mode="wait">
           {activeTab === "compte" && (
             <motion.div
