@@ -139,7 +139,7 @@ export default function MerchantDashboard() {
   };
 
   if (view === "statistics") {
-    return <MerchantStatistics onBack={() => setView("dashboard")} />;
+    return <MerchantStatistics onBack={() => setView("dashboard")} merchantProfile={merchantProfile} />;
   }
 
   if (view === "billings" && merchantProfile) {

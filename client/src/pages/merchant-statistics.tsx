@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react";
-import { ArrowLeft, Download, TrendingUp, TrendingDown, Users, ShoppingCart, Wallet, Calendar } from "lucide-react";
+import { ArrowLeft, Download, TrendingUp, Users, ShoppingCart, Wallet, Calendar, Loader2 } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import type { Transaction, Merchant } from "@shared/schema";
 
 type PeriodFilter = "day" | "week" | "month" | "year" | "all";
 
@@ -20,26 +22,8 @@ interface DailyStats {
 
 interface MerchantStatisticsProps {
   onBack: () => void;
+  merchantProfile?: Merchant;
 }
-
-const mockDailyStats: DailyStats[] = [
-  { date: "2025-12-07", transactions: 12, sales: 245.50, commission: 31.92, clients: 8, cashbackUsed: 18.50 },
-  { date: "2025-12-06", transactions: 15, sales: 312.00, commission: 40.56, clients: 11, cashbackUsed: 25.00 },
-  { date: "2025-12-05", transactions: 8, sales: 178.90, commission: 23.26, clients: 6, cashbackUsed: 12.40 },
-  { date: "2025-12-04", transactions: 18, sales: 425.00, commission: 55.25, clients: 14, cashbackUsed: 35.80 },
-  { date: "2025-12-03", transactions: 10, sales: 198.50, commission: 25.81, clients: 7, cashbackUsed: 15.20 },
-  { date: "2025-12-02", transactions: 14, sales: 287.30, commission: 37.35, clients: 10, cashbackUsed: 22.00 },
-  { date: "2025-12-01", transactions: 9, sales: 156.80, commission: 20.38, clients: 5, cashbackUsed: 8.50 },
-  { date: "2025-11-30", transactions: 20, sales: 478.00, commission: 62.14, clients: 16, cashbackUsed: 42.00 },
-  { date: "2025-11-29", transactions: 11, sales: 234.50, commission: 30.49, clients: 9, cashbackUsed: 19.00 },
-  { date: "2025-11-28", transactions: 16, sales: 356.70, commission: 46.37, clients: 12, cashbackUsed: 28.50 },
-  { date: "2025-11-15", transactions: 13, sales: 289.00, commission: 37.57, clients: 10, cashbackUsed: 21.00 },
-  { date: "2025-11-01", transactions: 22, sales: 512.00, commission: 66.56, clients: 18, cashbackUsed: 45.00 },
-  { date: "2025-10-15", transactions: 19, sales: 445.00, commission: 57.85, clients: 15, cashbackUsed: 38.00 },
-  { date: "2025-09-01", transactions: 25, sales: 589.00, commission: 76.57, clients: 20, cashbackUsed: 52.00 },
-];
-
-const accountOpeningDate = "2025-06-15";
 
 const periodLabels: Record<PeriodFilter, string> = {
   day: "Aujourd'hui",
@@ -58,17 +42,67 @@ function formatCurrency(amount: number): string {
   return amount.toFixed(2).replace(".", ",") + " €";
 }
 
-export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) {
+export default function MerchantStatistics({ onBack, merchantProfile }: MerchantStatisticsProps) {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("week");
   const { toast } = useToast();
 
-  const merchantName = "Boulangerie Antoine";
+  const merchantName = merchantProfile?.name || "Commerçant";
+  const accountOpeningDate = merchantProfile?.createdAt 
+    ? new Date(merchantProfile.createdAt).toISOString().split("T")[0]
+    : "2025-01-01";
+
+  const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
+    queryKey: ["/api/transactions/merchant"],
+  });
+
+  const dailyStats = useMemo(() => {
+    const completedTransactions = transactions.filter(tx => tx.status === "completed");
+    
+    const statsByDate = new Map<string, DailyStats>();
+    const clientsByDate = new Map<string, Set<string>>();
+    
+    completedTransactions.forEach(tx => {
+      const date = new Date(tx.createdAt).toISOString().split("T")[0];
+      const amount = parseFloat(tx.amount);
+      const cashbackAmount = parseFloat(tx.cashbackAmount || "0");
+      const commission = amount * 0.13;
+      
+      if (!statsByDate.has(date)) {
+        statsByDate.set(date, {
+          date,
+          transactions: 0,
+          sales: 0,
+          commission: 0,
+          clients: 0,
+          cashbackUsed: 0,
+        });
+        clientsByDate.set(date, new Set());
+      }
+      
+      const stats = statsByDate.get(date)!;
+      const clients = clientsByDate.get(date)!;
+      
+      stats.transactions += 1;
+      stats.sales += amount;
+      stats.commission += commission;
+      stats.cashbackUsed += cashbackAmount;
+      clients.add(tx.clientId);
+    });
+
+    statsByDate.forEach((stats, date) => {
+      stats.clients = clientsByDate.get(date)?.size || 0;
+    });
+
+    return Array.from(statsByDate.values()).sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [transactions]);
 
   const filteredStats = useMemo(() => {
     const now = new Date();
     const today = now.toISOString().split("T")[0];
     
-    return mockDailyStats.filter((stat) => {
+    return dailyStats.filter((stat) => {
       const statDate = new Date(stat.date);
       
       switch (periodFilter) {
@@ -95,20 +129,60 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
           return true;
       }
     });
-  }, [periodFilter]);
+  }, [periodFilter, dailyStats, accountOpeningDate]);
 
   const totals = useMemo(() => {
-    return filteredStats.reduce(
-      (acc, stat) => ({
-        transactions: acc.transactions + stat.transactions,
-        sales: acc.sales + stat.sales,
-        commission: acc.commission + stat.commission,
-        clients: acc.clients + stat.clients,
-        cashbackUsed: acc.cashbackUsed + stat.cashbackUsed,
-      }),
-      { transactions: 0, sales: 0, commission: 0, clients: 0, cashbackUsed: 0 }
-    );
-  }, [filteredStats]);
+    const uniqueClients = new Set<string>();
+    const completedTransactions = transactions.filter(tx => tx.status === "completed");
+    
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    
+    completedTransactions.forEach(tx => {
+      const txDate = new Date(tx.createdAt);
+      const txDateStr = txDate.toISOString().split("T")[0];
+      
+      let include = false;
+      switch (periodFilter) {
+        case "day":
+          include = txDateStr === today;
+          break;
+        case "week": {
+          const weekAgo = new Date(now);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          include = txDate >= weekAgo && txDate <= now;
+          break;
+        }
+        case "month": {
+          const monthAgo = new Date(now);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          include = txDate >= monthAgo && txDate <= now;
+          break;
+        }
+        case "year": {
+          const yearAgo = new Date(now);
+          yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+          include = txDate >= yearAgo && txDate <= now;
+          break;
+        }
+        case "all":
+          include = txDate >= new Date(accountOpeningDate);
+          break;
+      }
+      
+      if (include) {
+        uniqueClients.add(tx.clientId);
+      }
+    });
+
+    return {
+      transactions: filteredStats.reduce((sum, s) => sum + s.transactions, 0),
+      sales: filteredStats.reduce((sum, s) => sum + s.sales, 0),
+      commission: filteredStats.reduce((sum, s) => sum + s.commission, 0),
+      clients: uniqueClients.size,
+      cashbackUsed: filteredStats.reduce((sum, s) => sum + s.cashbackUsed, 0),
+    };
+  }, [filteredStats, transactions, periodFilter, accountOpeningDate]);
 
   const generatePDF = () => {
     const doc = new jsPDF();
@@ -126,7 +200,7 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
     doc.setFontSize(11);
     doc.text(`Transactions: ${totals.transactions}`, 14, 65);
     doc.text(`Chiffre d'affaires: ${formatCurrency(totals.sales)}`, 14, 73);
-    doc.text(`Cashback utilisé: ${formatCurrency(totals.cashbackUsed)}`, 14, 81);
+    doc.text(`Cashback généré: ${formatCurrency(totals.cashbackUsed)}`, 14, 81);
     doc.text(`Commission REV (13%): ${formatCurrency(totals.commission)}`, 14, 89);
     doc.text(`Clients uniques: ${totals.clients}`, 14, 97);
     
@@ -158,10 +232,6 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
     });
   };
 
-  const handleLogout = () => {
-    console.log("Merchant logout triggered");
-  };
-
   const statCards = [
     { 
       title: "Transactions", 
@@ -176,7 +246,7 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
       format: formatCurrency
     },
     { 
-      title: "Cashback utilisé", 
+      title: "Cashback généré", 
       value: totals.cashbackUsed, 
       icon: Wallet,
       format: formatCurrency
@@ -197,7 +267,7 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title={merchantName} onLogout={handleLogout} />
+      <Header title={merchantName} />
 
       <main className="container max-w-lg px-4 py-6 space-y-6">
         <div className="flex items-center gap-3">
@@ -236,70 +306,79 @@ export default function MerchantStatistics({ onBack }: MerchantStatisticsProps) 
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-3">
-          {statCards.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={index} className="border-card-border">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Icon className="w-4 h-4" />
-                    <span className="text-xs">{stat.title}</span>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              {statCards.map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                  <Card key={index} className="border-card-border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                        <Icon className="w-4 h-4" />
+                        <span className="text-xs">{stat.title}</span>
+                      </div>
+                      <p className="text-xl font-bold" data-testid={`stat-${stat.title.toLowerCase().replace(/\s/g, "-")}`}>
+                        {stat.format(stat.value)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {filteredStats.length > 0 ? (
+              <Card className="border-card-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Détail par jour</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {filteredStats.map((stat, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                        data-testid={`stat-row-${index}`}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{formatDate(stat.date)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {stat.transactions} transactions - {stat.clients} clients
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency(stat.sales)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            -{formatCurrency(stat.commission)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-xl font-bold" data-testid={`stat-${stat.title.toLowerCase().replace(/\s/g, "-")}`}>
-                    {stat.format(stat.value)}
-                  </p>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
-
-        {filteredStats.length > 0 ? (
-          <Card className="border-card-border">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Détail par jour</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {filteredStats.map((stat, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b border-border last:border-0"
-                    data-testid={`stat-row-${index}`}
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{formatDate(stat.date)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {stat.transactions} transactions - {stat.clients} clients
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{formatCurrency(stat.sales)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        -{formatCurrency(stat.commission)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-card-border">
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Aucune donnée pour cette période
-            </CardContent>
-          </Card>
+            ) : (
+              <Card className="border-card-border">
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  Aucune transaction pour cette période
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
 
         <Button
+          variant="outline"
           className="w-full gap-2"
-          size="lg"
           onClick={generatePDF}
+          disabled={isLoading || filteredStats.length === 0}
           data-testid="button-download-pdf"
         >
-          <Download className="w-5 h-5" />
+          <Download className="w-4 h-4" />
           Télécharger en PDF
         </Button>
 
