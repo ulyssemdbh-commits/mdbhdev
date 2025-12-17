@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 interface BillingData {
-  id: number;
+  id: string | number;
   merchantName: string;
   merchantAddress?: string;
   merchantCity?: string;
@@ -29,6 +29,14 @@ export function generateBillingPdf(billing: BillingData): void {
   const periodStart = new Date(billing.periodStart);
   const periodEnd = new Date(billing.periodEnd);
   const dueDate = new Date(billing.dueDate);
+
+  const formatCurrency = (value: string | number): string => {
+    const numValue = typeof value === "string" ? parseFloat(value) : value;
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "EUR",
+    }).format(numValue);
+  };
   
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
@@ -44,6 +52,7 @@ export function generateBillingPdf(billing: BillingData): void {
   doc.setFontSize(10);
   doc.text(`Facture N°: REV-${billing.id.toString().padStart(6, '0')}`, pageWidth - 20, 45, { align: "right" });
   doc.text(`Date: ${format(new Date(), "dd/MM/yyyy", { locale: fr })}`, pageWidth - 20, 52, { align: "right" });
+  doc.text(`Échéance: ${format(dueDate, "dd/MM/yyyy", { locale: fr })}`, pageWidth - 20, 59, { align: "right" });
   
   doc.setDrawColor(200, 200, 200);
   doc.line(20, 60, pageWidth - 20, 60);
@@ -82,12 +91,12 @@ export function generateBillingPdf(billing: BillingData): void {
     startY: 120,
     head: [["Description", "Base", "Taux", "Montant"]],
     body: [
-      ["Ventes totales de la période", "", "", `${billing.totalSales} €`],
-      ["Cashback reversé aux clients", `${billing.totalSales} €`, "10%", `${billing.cashbackAmount} €`],
-      ["Commission REV (HT)", `${billing.totalSales} €`, "3%", `${billing.revFeeAmount} €`],
-      ["TVA sur commission", `${billing.revFeeAmount} €`, "20%", `${billing.tvaAmount} €`],
+      ["Ventes totales de la période", "", "", formatCurrency(billing.totalSales)],
+      ["Cashback reversé aux clients", formatCurrency(billing.totalSales), "10%", formatCurrency(billing.cashbackAmount)],
+      ["Commission REV (HT)", formatCurrency(billing.totalSales), "3%", formatCurrency(billing.revFeeAmount)],
+      ["TVA sur commission", formatCurrency(billing.revFeeAmount), "20%", formatCurrency(billing.tvaAmount)],
     ],
-    foot: [["", "", "TOTAL À PAYER", `${billing.totalBilled} €`]],
+    foot: [["", "", "TOTAL À PAYER", formatCurrency(billing.totalBilled)]],
     theme: "striped",
     headStyles: { 
       fillColor: [59, 130, 246],

@@ -225,6 +225,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Merchant billings API
+  app.get('/api/merchant/billings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(403).json({ message: "Only merchants can access this endpoint" });
+      }
+
+      const billings = await storage.getBillingsByMerchant(merchant.id);
+      res.json(billings);
+    } catch (error) {
+      console.error("Error fetching merchant billings:", error);
+      res.status(500).json({ message: "Failed to fetch merchant billings" });
+    }
+  });
+
   // Cashback API
   app.get('/api/cashback/balances', isAuthenticated, async (req: any, res) => {
     try {

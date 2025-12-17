@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Camera, BarChart3, Loader2 } from "lucide-react";
+import { Camera, BarChart3, Loader2, Receipt } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { AccountSection } from "@/components/shared/AccountSection";
 import { QRScanner } from "@/components/merchant/QRScanner";
 import { TransactionForm } from "@/components/merchant/TransactionForm";
 import { MerchantTransactionList, type MerchantTransaction } from "@/components/merchant/MerchantTransactionList";
+import { MerchantBillings } from "@/components/merchant/MerchantBillings";
 import MerchantStatistics from "@/pages/merchant-statistics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Merchant, Transaction } from "@shared/schema";
 
-type MerchantView = "scanner" | "form" | "dashboard" | "statistics";
+type MerchantView = "scanner" | "form" | "dashboard" | "statistics" | "billings";
 
 interface ClientCashbackInfo {
   clientId: string;
@@ -140,6 +141,20 @@ export default function MerchantDashboard() {
     return <MerchantStatistics onBack={() => setView("dashboard")} />;
   }
 
+  if (view === "billings" && merchantProfile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title={merchantName} />
+        <main className="container max-w-lg px-4 py-6">
+          <MerchantBillings 
+            merchant={merchantProfile} 
+            onBack={() => setView("dashboard")} 
+          />
+        </main>
+      </div>
+    );
+  }
+
   const isLoading = merchantLoading || transactionsLoading;
 
   return (
@@ -183,6 +198,16 @@ export default function MerchantDashboard() {
             >
               <BarChart3 className="w-5 h-5" />
               Voir les statistiques détaillées
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setView("billings")}
+              data-testid="button-view-billings"
+            >
+              <Receipt className="w-5 h-5" />
+              Mes factures REV
             </Button>
 
             <AccountSection 
