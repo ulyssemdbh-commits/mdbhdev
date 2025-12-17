@@ -119,7 +119,9 @@ export const merchantBillings = pgTable("merchant_billings", {
   cashbackAmount: decimal("cashback_amount", { precision: 10, scale: 2 }).default("0.00").notNull(), // 10%
   revFeeAmount: decimal("rev_fee_amount", { precision: 10, scale: 2 }).default("0.00").notNull(), // 3%
   tvaAmount: decimal("tva_amount", { precision: 10, scale: 2 }).default("0.00").notNull(), // 20% of rev fee
-  totalBilled: decimal("total_billed", { precision: 10, scale: 2 }).default("0.00").notNull(), // total 13%
+  promotionCharges: decimal("promotion_charges", { precision: 10, scale: 2 }).default("0.00").notNull(), // 19€/week per active promotion
+  promotionWeeks: decimal("promotion_weeks", { precision: 5, scale: 0 }).default("0").notNull(), // Number of promotion-weeks billed
+  totalBilled: decimal("total_billed", { precision: 10, scale: 2 }).default("0.00").notNull(), // total including promotions
   status: text("status").notNull().default("pending"), // pending, paid, overdue
   dueDate: timestamp("due_date").notNull(),
   paidAt: timestamp("paid_at"),
