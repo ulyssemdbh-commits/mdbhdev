@@ -421,9 +421,12 @@ export function CashbackTransfer() {
               <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-lg" />
             </div>
           </div>
-          <div className="absolute top-4 left-0 right-0 text-center">
+          <div className="absolute top-4 left-0 right-0 text-center space-y-1">
             <p className="text-white text-sm font-medium bg-black/50 inline-block px-3 py-1 rounded-full">
-              Scannez le QR code d'un membre
+              Payez ou Partagez vos CashBack
+            </p>
+            <p className="text-white text-xs bg-black/50 inline-block px-2 py-0.5 rounded-full">
+              Scannez le QR code
             </p>
           </div>
         </div>
