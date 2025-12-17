@@ -531,11 +531,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Promotions API (Bons Plans)
-  // Get all active promotions (for clients)
+  // Get all active promotions (for clients) - includes merchant info
   app.get('/api/promotions', async (req, res) => {
     try {
       const promos = await storage.getActivePromotions();
-      res.json(promos);
+      // Enrich with merchant info
+      const enrichedPromos = await Promise.all(promos.map(async (promo) => {
+        const merchant = await storage.getMerchant(promo.merchantId);
+        return {
+          ...promo,
+          merchantName: merchant?.name || "Commerçant",
+          merchantCategory: merchant?.category || "Commerce",
+        };
+      }));
+      res.json(enrichedPromos);
     } catch (error) {
       console.error("Error fetching promotions:", error);
       res.status(500).json({ message: "Failed to fetch promotions" });

@@ -13,7 +13,7 @@ import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavi
 import { CashbackTransfer } from "@/components/client/CashbackTransfer";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
-import type { User, Merchant as APIMerchant, CashbackBalance } from "@shared/schema";
+import type { User, Merchant as APIMerchant, CashbackBalance, Promotion } from "@shared/schema";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -28,13 +28,6 @@ const staggerChildren = {
     },
   },
 };
-
-// todo: remove mock functionality for bons plans
-const mockBonsPlans: BonPlan[] = [
-  { id: "1", title: "-20% sur les viennoiseries", description: "Profitez de 20% de réduction sur toutes les viennoiseries du matin", merchantName: "Boulangerie Antoine", category: "Alimentation", discount: "-20%", validUntil: "31 déc." },
-  { id: "2", title: "Café offert", description: "Un café offert pour tout achat d'un petit-déjeuner complet", merchantName: "Café Marcel", category: "Restauration", discount: "Offert", validUntil: "15 déc." },
-  { id: "3", title: "-10% sur les produits frais", description: "Réduction sur tous les fruits et légumes de saison", merchantName: "Supermarché Bio", category: "Alimentation", discount: "-10%", validUntil: "20 déc." },
-];
 
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState<ClientTab>("compte");
@@ -60,6 +53,11 @@ export default function ClientDashboard() {
     queryKey: ["/api/transactions/client"],
   });
   const transactionsData = transactionsRaw || [];
+
+  const { data: promotionsRaw, isLoading: promotionsLoading } = useQuery<(Promotion & { merchantName: string; merchantCategory: string })[] | null>({
+    queryKey: ["/api/promotions"],
+  });
+  const promotionsData = promotionsRaw || [];
 
   // Calculate total balances
   const availableBalance = cashbackBalances.reduce(
@@ -117,13 +115,37 @@ export default function ClientDashboard() {
     return Array.from(categories);
   }, [merchants]);
 
+  // Transform promotions to BonPlan format
+  const bonsPlans: BonPlan[] = useMemo(() => {
+    return promotionsData.map((promo) => {
+      const merchant = merchants.find(m => m.id === promo.merchantId);
+      let discount = "";
+      if (promo.type === "cashback_boost") {
+        discount = `${promo.cashbackBoostRate}% cashback`;
+      } else if (promo.type === "free_article") {
+        discount = "Offert";
+      } else if (promo.type === "discount_percent") {
+        discount = `-${promo.discountPercent}%`;
+      }
+      return {
+        id: promo.id,
+        title: promo.title,
+        description: promo.description || (promo.type === "free_article" ? promo.freeArticle || "" : ""),
+        merchantName: merchant?.name || promo.merchantName || "Commerçant",
+        category: merchant?.category || promo.merchantCategory || "Commerce",
+        discount,
+        validUntil: new Date(promo.endDate).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+      };
+    });
+  }, [promotionsData, merchants]);
+
   const filteredMerchants = displayMerchants.filter((m) => {
     const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === "all" || m.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const filteredBonsPlans = mockBonsPlans.filter((bp) => {
+  const filteredBonsPlans = bonsPlans.filter((bp) => {
     const matchesSearch = bp.title.toLowerCase().includes(bonsPlansSearchQuery.toLowerCase()) ||
       bp.merchantName.toLowerCase().includes(bonsPlansSearchQuery.toLowerCase());
     const matchesCategory = bonsPlansCategory === "all" || bp.category === bonsPlansCategory;
@@ -136,7 +158,7 @@ export default function ClientDashboard() {
 
   const clientRevId = typedUser?.revId || "REVid-000000";
 
-  const isLoading = merchantsLoading || balancesLoading || transactionsLoading;
+  const isLoading = merchantsLoading || balancesLoading || transactionsLoading || promotionsLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -200,26 +222,36 @@ export default function ClientDashboard() {
               <p className="text-sm text-muted-foreground">
                 Découvrez les offres exclusives de nos commerçants partenaires
               </p>
-              <motion.div variants={staggerChildren} className="space-y-4">
-                {filteredBonsPlans.length > 0 ? (
-                  filteredBonsPlans.map((bp, index) => (
-                    <motion.div
-                      key={bp.id}
-                      variants={fadeInUp}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <BonPlanCard
-                        bonPlan={bp}
-                        onViewOffer={() => console.log("View offer:", bp.id)}
-                      />
-                    </motion.div>
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">
-                    Aucun bon plan trouvé pour cette recherche
-                  </p>
-                )}
-              </motion.div>
+              {promotionsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <motion.div variants={staggerChildren} className="space-y-4">
+                  {filteredBonsPlans.length > 0 ? (
+                    filteredBonsPlans.map((bp, index) => (
+                      <motion.div
+                        key={bp.id}
+                        variants={fadeInUp}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <BonPlanCard
+                          bonPlan={bp}
+                          onViewOffer={() => console.log("View offer:", bp.id)}
+                        />
+                      </motion.div>
+                    ))
+                  ) : bonsPlans.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      Aucune offre disponible pour le moment
+                    </p>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      Aucun bon plan trouvé pour cette recherche
+                    </p>
+                  )}
+                </motion.div>
+              )}
             </motion.div>
           )}
 
