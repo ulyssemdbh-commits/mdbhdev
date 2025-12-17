@@ -530,6 +530,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Promotions API (Bons Plans)
+  // Get all active promotions (for clients)
+  app.get('/api/promotions', async (req, res) => {
+    try {
+      const promos = await storage.getActivePromotions();
+      res.json(promos);
+    } catch (error) {
+      console.error("Error fetching promotions:", error);
+      res.status(500).json({ message: "Failed to fetch promotions" });
+    }
+  });
+
+  // Get promotions for current merchant
+  app.get('/api/merchant/promotions', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant profile not found" });
+      }
+      const promos = await storage.getPromotionsByMerchant(merchant.id);
+      res.json(promos);
+    } catch (error) {
+      console.error("Error fetching merchant promotions:", error);
+      res.status(500).json({ message: "Failed to fetch promotions" });
+    }
+  });
+
+  // Create a promotion (merchant only)
+  app.post('/api/merchant/promotions', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant profile not found" });
+      }
+
+      const promotionSchema = z.object({
+        type: z.enum(['cashback_boost', 'free_article', 'discount_percent']),
+        title: z.string().min(1),
+        description: z.string().optional(),
+        cashbackBoostRate: z.string().optional(),
+        freeArticle: z.string().optional(),
+        discountPercent: z.string().optional(),
+        startDate: z.string(),
+        endDate: z.string(),
+        isActive: z.boolean().optional().default(true),
+      });
+
+      const parsed = promotionSchema.parse(req.body);
+      const promo = await storage.createPromotion({
+        ...parsed,
+        merchantId: merchant.id,
+        startDate: new Date(parsed.startDate),
+        endDate: new Date(parsed.endDate),
+      });
+      res.status(201).json(promo);
+    } catch (error) {
+      console.error("Error creating promotion:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid promotion data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create promotion" });
+    }
+  });
+
+  // Update a promotion
+  app.patch('/api/merchant/promotions/:id', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant profile not found" });
+      }
+
+      const promo = await storage.getPromotion(req.params.id);
+      if (!promo || promo.merchantId !== merchant.id) {
+        return res.status(404).json({ message: "Promotion not found" });
+      }
+
+      const updateData: any = { ...req.body };
+      if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+      if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+
+      const updated = await storage.updatePromotion(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating promotion:", error);
+      res.status(500).json({ message: "Failed to update promotion" });
+    }
+  });
+
+  // Delete a promotion
+  app.delete('/api/merchant/promotions/:id', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant profile not found" });
+      }
+
+      const promo = await storage.getPromotion(req.params.id);
+      if (!promo || promo.merchantId !== merchant.id) {
+        return res.status(404).json({ message: "Promotion not found" });
+      }
+
+      await storage.deletePromotion(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting promotion:", error);
+      res.status(500).json({ message: "Failed to delete promotion" });
+    }
+  });
+
   // Admin API - Get stats for admin dashboard
   app.get('/api/admin/stats', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {

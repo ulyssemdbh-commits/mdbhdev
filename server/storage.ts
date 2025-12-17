@@ -8,6 +8,7 @@ import {
   merchantCategories,
   merchantBillings,
   notifications,
+  promotions,
   generateRevId,
   type User,
   type UpsertUser,
@@ -27,6 +28,8 @@ import {
   type InsertMerchantBilling,
   type Notification,
   type InsertNotification,
+  type Promotion,
+  type InsertPromotion,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
@@ -111,6 +114,14 @@ export interface IStorage {
   markNotificationAsRead(id: string): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+  
+  // Promotion operations (Bons Plans)
+  getPromotion(id: string): Promise<Promotion | undefined>;
+  getPromotionsByMerchant(merchantId: string): Promise<Promotion[]>;
+  getActivePromotions(): Promise<Promotion[]>;
+  createPromotion(promotion: InsertPromotion): Promise<Promotion>;
+  updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
+  deletePromotion(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -538,6 +549,48 @@ export class DatabaseStorage implements IStorage {
       .from(notifications)
       .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
     return Number(result[0]?.count || 0);
+  }
+
+  // Promotion operations (Bons Plans)
+  async getPromotion(id: string): Promise<Promotion | undefined> {
+    const [promotion] = await db.select().from(promotions).where(eq(promotions.id, id));
+    return promotion;
+  }
+
+  async getPromotionsByMerchant(merchantId: string): Promise<Promotion[]> {
+    return db.select().from(promotions)
+      .where(eq(promotions.merchantId, merchantId))
+      .orderBy(desc(promotions.createdAt));
+  }
+
+  async getActivePromotions(): Promise<Promotion[]> {
+    const now = new Date();
+    return db.select().from(promotions)
+      .where(and(
+        eq(promotions.isActive, true),
+        sql`${promotions.startDate} <= ${now}`,
+        sql`${promotions.endDate} >= ${now}`
+      ))
+      .orderBy(desc(promotions.createdAt));
+  }
+
+  async createPromotion(promotion: InsertPromotion): Promise<Promotion> {
+    const [created] = await db.insert(promotions).values(promotion).returning();
+    return created;
+  }
+
+  async updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined> {
+    const [updated] = await db
+      .update(promotions)
+      .set(data)
+      .where(eq(promotions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePromotion(id: string): Promise<boolean> {
+    const result = await db.delete(promotions).where(eq(promotions.id, id));
+    return true;
   }
 }
 
