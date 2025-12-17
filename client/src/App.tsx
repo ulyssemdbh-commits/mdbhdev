@@ -81,7 +81,7 @@ function App() {
             </ProtectedRoute>
           </Route>
           <Route path="/client">
-            <ProtectedRoute allowedRoles={["client"]}>
+            <ProtectedRoute allowedRoles={["client", "admin"]}>
               <ClientDashboard />
             </ProtectedRoute>
           </Route>
