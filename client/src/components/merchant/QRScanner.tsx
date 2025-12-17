@@ -50,9 +50,10 @@ export function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
   };
 
   const simulateScan = () => {
-    // todo: remove mock functionality
-    const mockClientId = "CLT-" + Math.random().toString(36).substr(2, 9).toUpperCase();
-    onScanSuccess(mockClientId);
+    // Simulate scanning a REVID QR code
+    const digits = Math.floor(10000000 + Math.random() * 90000000).toString();
+    const mockRevId = `REVID${digits}`;
+    onScanSuccess(mockRevId);
   };
 
   if (showManualInput) {
@@ -68,7 +69,7 @@ export function QRScanner({ onScanSuccess, onCancel }: QRScannerProps) {
           </div>
           <div className="space-y-3">
             <Input
-              placeholder="Code client (ex: CLT-ABC123)"
+              placeholder="Code client (ex: REVID12345678)"
               value={manualInput}
               onChange={(e) => setManualInput(e.target.value)}
               data-testid="input-manual-client-code"

@@ -134,7 +134,7 @@ export default function ClientDashboard() {
     ? `${typedUser.firstName || ""} ${typedUser.lastName || ""}`.trim() || typedUser.email || "Client"
     : "Client";
 
-  const clientId = typedUser?.id || "CLT-UNKNOWN";
+  const clientRevId = typedUser?.revId || "REVID00000000";
 
   const isLoading = merchantsLoading || balancesLoading || transactionsLoading;
 
@@ -156,7 +156,7 @@ export default function ClientDashboard() {
               className="space-y-6"
             >
               <motion.div variants={fadeInUp}>
-                <QRCodeDisplay clientId={clientId} clientName={clientName} />
+                <QRCodeDisplay revId={clientRevId} clientName={clientName} />
               </motion.div>
               <motion.div variants={fadeInUp}>
                 <BalanceCard available={availableBalance} pending={pendingBalance} />

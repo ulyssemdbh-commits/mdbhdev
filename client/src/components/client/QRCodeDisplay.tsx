@@ -2,19 +2,17 @@ import QRCode from "react-qr-code";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface QRCodeDisplayProps {
-  clientId: string;
+  revId: string;
   clientName: string;
 }
 
-export function QRCodeDisplay({ clientId, clientName }: QRCodeDisplayProps) {
-  const qrValue = `REV-CLIENT-${clientId}`;
-
+export function QRCodeDisplay({ revId, clientName }: QRCodeDisplayProps) {
   return (
     <Card className="border-card-border">
       <CardContent className="flex flex-col items-center p-6 gap-4">
         <div className="bg-white p-4 rounded-md">
           <QRCode
-            value={qrValue}
+            value={revId}
             size={200}
             level="H"
             data-testid="qr-code-client"
@@ -23,6 +21,9 @@ export function QRCodeDisplay({ clientId, clientName }: QRCodeDisplayProps) {
         <div className="text-center space-y-1">
           <p className="font-semibold text-lg" data-testid="text-client-name">
             {clientName}
+          </p>
+          <p className="text-sm font-mono text-muted-foreground" data-testid="text-rev-id">
+            {revId}
           </p>
           <p className="text-sm text-muted-foreground">
             Présentez ce code en caisse

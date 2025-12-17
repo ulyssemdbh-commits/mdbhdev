@@ -331,9 +331,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cashback Transfers API
+  // Lookup user by REV ID (e.g., REVID12345678) or regular ID
   app.get('/api/users/:id', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.params.id);
+      const { id } = req.params;
+      let user;
+      
+      // Check if it's a REV ID format (REVID + 8 digits)
+      if (id.startsWith('REVID') && id.length === 13) {
+        user = await storage.getUserByRevId(id);
+      } else {
+        user = await storage.getUser(id);
+      }
+      
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }

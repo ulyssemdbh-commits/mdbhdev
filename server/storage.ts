@@ -7,6 +7,7 @@ import {
   cashbackTransfers,
   merchantCategories,
   merchantBillings,
+  generateRevId,
   type User,
   type UpsertUser,
   type Merchant,
@@ -30,6 +31,7 @@ import { eq, and, desc, gte, sql } from "drizzle-orm";
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+  getUserByRevId(revId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserRole(id: string, role: string): Promise<User | undefined>;
   
@@ -108,10 +110,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByRevId(revId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(sql`${users.revId} = ${revId}`);
+    return user;
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // Check if user exists to determine if we need to generate a revId
+    const existingUser = userData.id ? await this.getUser(userData.id) : undefined;
+    
+    const dataWithRevId = {
+      ...userData,
+      revId: existingUser?.revId || generateRevId(),
+    };
+    
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(dataWithRevId)
       .onConflictDoUpdate({
         target: users.id,
         set: {

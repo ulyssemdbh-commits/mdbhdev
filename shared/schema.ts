@@ -3,8 +3,15 @@ import { pgTable, text, varchar, decimal, timestamp, boolean, index, uniqueIndex
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Generate unique REV ID: REVID + 8 random digits
+export function generateRevId(): string {
+  const digits = Math.floor(10000000 + Math.random() * 90000000).toString();
+  return `REVID${digits}`;
+}
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  revId: varchar("rev_id", { length: 13 }).unique(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),

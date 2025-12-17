@@ -133,11 +133,8 @@ export function CashbackTransfer() {
   };
 
   const handleScanResult = (scannedValue: string) => {
-    let userId = scannedValue;
-    if (scannedValue.startsWith("REV-CLIENT-")) {
-      userId = scannedValue.replace("REV-CLIENT-", "");
-    }
-    fetchRecipientInfo(userId);
+    // Accept REVID format directly or lookup by ID
+    fetchRecipientInfo(scannedValue.trim());
   };
 
   const handleManualSubmit = () => {
@@ -433,8 +430,9 @@ export function CashbackTransfer() {
             <Button
               className="flex-1 gap-2"
               onClick={() => {
-                const mockUserId = "mock-" + Math.random().toString(36).substr(2, 9);
-                handleScanResult(mockUserId);
+                const digits = Math.floor(10000000 + Math.random() * 90000000).toString();
+                const mockRevId = `REVID${digits}`;
+                handleScanResult(mockRevId);
               }}
               data-testid="button-simulate-scan"
             >
