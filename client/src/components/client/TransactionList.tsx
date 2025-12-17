@@ -58,7 +58,7 @@ export function TransactionList({ transactions, maxHeight = "400px" }: Transacti
         <CardTitle className="text-lg font-semibold">Historique</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea style={{ maxHeight }} className="px-6 pb-6">
+        <ScrollArea style={{ height: maxHeight }} className="px-6 pb-6">
           {transactions.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Aucune transaction
