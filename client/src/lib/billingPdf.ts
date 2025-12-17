@@ -89,22 +89,31 @@ export function generateBillingPdf(billing: BillingData): void {
     pageWidth - 20, 90, { align: "right" }
   );
   
-  const tableBody = [
+  const tableBody: string[][] = [
     ["Ventes totales de la période", "", "", formatCurrency(billing.totalSales)],
     ["Cashback reversé aux clients", formatCurrency(billing.totalSales), "10%", formatCurrency(billing.cashbackAmount)],
     ["Commission REV (HT)", formatCurrency(billing.totalSales), "3%", formatCurrency(billing.revFeeAmount)],
-    ["TVA sur commission", formatCurrency(billing.revFeeAmount), "20%", formatCurrency(billing.tvaAmount)],
   ];
   
   if (billing.promotionCharges && parseFloat(billing.promotionCharges) > 0) {
     const weeks = billing.promotionWeeks ? parseInt(billing.promotionWeeks) : 0;
     tableBody.push([
-      `Bons Plans (${weeks} semaine${weeks > 1 ? 's' : ''})`,
+      `Bons Plans (HT) - ${weeks} semaine${weeks > 1 ? 's' : ''}`,
       "",
       "19€/sem.",
       formatCurrency(billing.promotionCharges)
     ]);
   }
+  
+  const revFee = parseFloat(billing.revFeeAmount);
+  const promoCharges = billing.promotionCharges ? parseFloat(billing.promotionCharges) : 0;
+  const tvaBase = revFee + promoCharges;
+  tableBody.push([
+    "TVA sur commission + Bons Plans",
+    formatCurrency(tvaBase.toString()),
+    "20%",
+    formatCurrency(billing.tvaAmount)
+  ]);
 
   autoTable(doc, {
     startY: 120,

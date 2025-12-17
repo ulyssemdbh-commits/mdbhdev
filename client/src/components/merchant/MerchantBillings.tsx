@@ -243,18 +243,18 @@ export function MerchantBillings({ merchant, onBack }: MerchantBillingsProps) {
                                       <span className="text-muted-foreground">Commission REV (3%)</span>
                                       <span>{formatCurrency(billing.revFeeAmount)}</span>
                                     </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">TVA (20%)</span>
-                                      <span>{formatCurrency(billing.tvaAmount)}</span>
-                                    </div>
                                     {(billing as any).promotionCharges && parseFloat((billing as any).promotionCharges) > 0 && (
                                       <div className="flex justify-between">
                                         <span className="text-muted-foreground">
-                                          Bons Plans ({(billing as any).promotionWeeks} sem. x 19€)
+                                          Bons Plans HT ({(billing as any).promotionWeeks} sem. x 19€)
                                         </span>
                                         <span>{formatCurrency((billing as any).promotionCharges)}</span>
                                       </div>
                                     )}
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">TVA 20% (Commission + Bons Plans)</span>
+                                      <span>{formatCurrency(billing.tvaAmount)}</span>
+                                    </div>
                                     <div className="flex justify-between border-t pt-2">
                                       <span className="font-semibold">Total à payer</span>
                                       <span className="font-semibold text-lg">{formatCurrency(billing.totalBilled)}</span>
