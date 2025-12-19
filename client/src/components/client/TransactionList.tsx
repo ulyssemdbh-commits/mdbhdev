@@ -58,7 +58,7 @@ export function TransactionList({ transactions, maxHeight = "400px" }: Transacti
         <CardTitle className="font-semibold text-center text-[20px] text-[#d00000]">Mes derniers CashBack</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea style={{ height: maxHeight }} className="px-6 pb-6">
+        <ScrollArea style={{ height: maxHeight }} className="px-6 pb-6 bg-[#f5f5f5] dark:bg-muted">
           {transactions.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Aucune transaction
