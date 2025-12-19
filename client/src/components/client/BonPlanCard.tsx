@@ -56,7 +56,8 @@ export function BonPlanCard({ bonPlan, onViewOffer }: BonPlanCardProps) {
           </Badge>
         </div>
         <Button
-          className="w-full"
+          className="w-full font-bold"
+          style={{ backgroundColor: '#f5f5f5', color: '#000000', fontSize: '20px' }}
           onClick={onViewOffer}
           data-testid={`button-view-offer-${bonPlan.id}`}
         >
