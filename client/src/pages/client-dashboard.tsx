@@ -17,7 +17,6 @@ import { Loader2, Tag, Store, Calendar, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CharityDonation } from "@/components/client/CharityDonation";
 import type { User, Merchant as APIMerchant, CashbackBalance, Promotion } from "@shared/schema";
 
 const fadeInUp = {
@@ -323,19 +322,6 @@ export default function ClientDashboard() {
               transition={{ duration: 0.2 }}
             >
               <GiftCardSection />
-            </motion.div>
-          )}
-
-          {activeTab === "dons" && (
-            <motion.div
-              key="dons"
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={fadeInUp}
-              transition={{ duration: 0.2 }}
-            >
-              <CharityDonation onBack={() => setActiveTab("compte")} />
             </motion.div>
           )}
 
