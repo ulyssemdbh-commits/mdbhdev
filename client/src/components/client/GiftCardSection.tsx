@@ -9,7 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Gift, Send, CreditCard, ArrowRight, Loader2 } from "lucide-react";
+import { SiStripe, SiPaypal } from "react-icons/si";
 import type { GiftCard, GiftCardBalance, GiftCardPurchase } from "@shared/schema";
+
+type PaymentMethod = "stripe" | "paypal";
 
 interface GiftCardWithDetails extends GiftCardBalance {
   giftCard?: GiftCard;
@@ -23,6 +26,8 @@ export function GiftCardSection() {
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedBalance, setSelectedBalance] = useState<GiftCardWithDetails | null>(null);
   const [recipientRevId, setRecipientRevId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { data: giftCards, isLoading: cardsLoading } = useQuery<GiftCard[]>({
     queryKey: ["/api/gift-cards"],
@@ -79,9 +84,37 @@ export function GiftCardSection() {
     },
   });
 
-  const handlePurchase = () => {
-    if (selectedCard) {
-      purchaseMutation.mutate(selectedCard.id);
+  const handlePurchase = async () => {
+    if (!selectedCard) return;
+    
+    setIsProcessingPayment(true);
+    
+    try {
+      if (paymentMethod === "stripe") {
+        const res = await apiRequest("POST", "/api/gift-cards/checkout/stripe", { 
+          giftCardId: selectedCard.id 
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error("No checkout URL received");
+        }
+      } else if (paymentMethod === "paypal") {
+        toast({
+          title: "PayPal",
+          description: "Redirection vers PayPal en cours...",
+        });
+        purchaseMutation.mutate(selectedCard.id);
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error.message || "Impossible de traiter le paiement",
+      });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -216,35 +249,64 @@ export function GiftCardSection() {
       <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmer l'achat</DialogTitle>
+            <DialogTitle>Acheter une carte cadeau</DialogTitle>
             <DialogDescription>
-              Vous allez acheter une carte cadeau a offrir.
+              Choisissez votre mode de paiement pour acheter cette carte cadeau.
             </DialogDescription>
           </DialogHeader>
           {selectedCard && (
-            <div className="py-4">
-              <div className="text-center mb-4">
+            <div className="py-4 space-y-6">
+              <div className="text-center">
                 <div className="text-lg font-medium">{selectedCard.title}</div>
                 <div className="text-3xl font-bold text-primary mt-2">
                   {parseFloat(selectedCard.faceValue).toFixed(2)} EUR
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground text-center">
+              
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Mode de paiement</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "stripe" ? "default" : "outline"}
+                    className="flex items-center justify-center gap-2 h-14"
+                    onClick={() => setPaymentMethod("stripe")}
+                    data-testid="button-payment-stripe"
+                  >
+                    <SiStripe className="w-5 h-5" />
+                    <span>Carte bancaire</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "paypal" ? "default" : "outline"}
+                    className="flex items-center justify-center gap-2 h-14"
+                    onClick={() => setPaymentMethod("paypal")}
+                    data-testid="button-payment-paypal"
+                  >
+                    <SiPaypal className="w-5 h-5" />
+                    <span>PayPal</span>
+                  </Button>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center">
                 Vous pourrez offrir cette carte apres 7 jours ouvrables.
               </p>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setPurchaseDialogOpen(false)}>
               Annuler
             </Button>
             <Button
               onClick={handlePurchase}
-              disabled={purchaseMutation.isPending}
+              disabled={isProcessingPayment || purchaseMutation.isPending}
               data-testid="button-confirm-purchase"
             >
-              {purchaseMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmer l'achat
+              {(isProcessingPayment || purchaseMutation.isPending) && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Payer {selectedCard && `${parseFloat(selectedCard.faceValue).toFixed(2)} EUR`}
             </Button>
           </DialogFooter>
         </DialogContent>

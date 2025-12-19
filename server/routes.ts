@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole } from "./replitAuth";
 import { emitTransactionUpdate, emitStatsUpdate, emitMerchantUpdate, emitClientUpdate } from "./socket";
 import { z } from "zod";
+import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault, isPayPalConfigured } from "./paypal";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -1348,7 +1350,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client: Purchase gift card
+  // ==================== PAYMENT CONFIGURATION ====================
+
+  // Get available payment methods
+  app.get('/api/payments/config', async (req, res) => {
+    try {
+      const stripeKey = await getStripePublishableKey();
+      res.json({
+        stripe: { enabled: true, publishableKey: stripeKey },
+        paypal: { enabled: isPayPalConfigured() },
+      });
+    } catch (error) {
+      console.error("Error fetching payment config:", error);
+      res.json({
+        stripe: { enabled: false },
+        paypal: { enabled: isPayPalConfigured() },
+      });
+    }
+  });
+
+  // ==================== PAYPAL ROUTES ====================
+
+  app.get("/api/paypal/setup", async (req, res) => {
+    await loadPaypalDefault(req, res);
+  });
+
+  app.post("/api/paypal/order", async (req, res) => {
+    await createPaypalOrder(req, res);
+  });
+
+  app.post("/api/paypal/order/:orderID/capture", async (req, res) => {
+    await capturePaypalOrder(req, res);
+  });
+
+  // ==================== STRIPE GIFT CARD CHECKOUT ====================
+
+  // Create Stripe checkout session for gift card purchase
+  app.post('/api/gift-cards/checkout/stripe', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { giftCardId } = req.body;
+
+      if (!giftCardId) {
+        return res.status(400).json({ message: "Gift card ID is required" });
+      }
+
+      const giftCard = await storage.getGiftCard(giftCardId);
+      if (!giftCard) {
+        return res.status(404).json({ message: "Carte cadeau non trouvée" });
+      }
+
+      if (!giftCard.isActive) {
+        return res.status(400).json({ message: "Cette carte cadeau n'est plus disponible" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || req.get('host')}`;
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'eur',
+              product_data: {
+                name: giftCard.title,
+                description: giftCard.description || `Carte cadeau REV - ${giftCard.faceValue}€`,
+              },
+              unit_amount: Math.round(parseFloat(giftCard.faceValue) * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${baseUrl}/gift-cards/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/gift-cards/cancel`,
+        metadata: {
+          userId,
+          giftCardId,
+          faceValue: giftCard.faceValue,
+          cashbackRate: giftCard.cashbackRate,
+        },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error) {
+      console.error("Error creating Stripe checkout session:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  // Verify Stripe payment and complete gift card purchase
+  app.post('/api/gift-cards/checkout/stripe/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ message: "Le paiement n'a pas été effectué" });
+      }
+
+      if (session.metadata?.userId !== userId) {
+        return res.status(403).json({ message: "Session non autorisée" });
+      }
+
+      const giftCardId = session.metadata?.giftCardId;
+      const faceValue = session.metadata?.faceValue;
+      const cashbackRate = session.metadata?.cashbackRate;
+
+      if (!giftCardId || !faceValue || !cashbackRate) {
+        return res.status(400).json({ message: "Données de session invalides" });
+      }
+
+      const result = await storage.purchaseGiftCard(
+        userId,
+        giftCardId,
+        faceValue,
+        cashbackRate
+      );
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error verifying Stripe payment:", error);
+      res.status(500).json({ message: "Failed to verify payment" });
+    }
+  });
+
+  // ==================== PAYPAL GIFT CARD CHECKOUT ====================
+
+  // Complete gift card purchase after PayPal payment
+  app.post('/api/gift-cards/checkout/paypal/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { giftCardId, paypalOrderId } = req.body;
+
+      if (!giftCardId || !paypalOrderId) {
+        return res.status(400).json({ message: "Gift card ID and PayPal order ID are required" });
+      }
+
+      const giftCard = await storage.getGiftCard(giftCardId);
+      if (!giftCard) {
+        return res.status(404).json({ message: "Carte cadeau non trouvée" });
+      }
+
+      const result = await storage.purchaseGiftCard(
+        userId,
+        giftCardId,
+        giftCard.faceValue,
+        giftCard.cashbackRate
+      );
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error completing PayPal gift card purchase:", error);
+      res.status(500).json({ message: "Failed to complete purchase" });
+    }
+  });
+
+  // Client: Purchase gift card (legacy - kept for compatibility)
   const purchaseGiftCardSchema = z.object({
     giftCardId: z.string().min(1, "Gift card ID is required"),
   });
