@@ -43,7 +43,7 @@ export function BonPlanCard({ bonPlan, onViewOffer }: BonPlanCardProps) {
           )}
         </div>
         <div className="space-y-1">
-          <h3 className="font-semibold">{bonPlan.title}</h3>
+          <h3 className="font-semibold text-[#d00000] text-[18px]">{bonPlan.title}</h3>
           <p className="text-sm text-muted-foreground line-clamp-2">
             {bonPlan.description}
           </p>
