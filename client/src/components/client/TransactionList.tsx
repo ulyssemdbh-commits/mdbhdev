@@ -80,7 +80,7 @@ export function TransactionList({ transactions, maxHeight = "400px" }: Transacti
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-[#0d0d0d]">{tx.merchantName}</p>
-                        <p className="text-sm text-muted-foreground">{tx.date}</p>
+                        <p className="text-sm text-[#757272]">{tx.date}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
