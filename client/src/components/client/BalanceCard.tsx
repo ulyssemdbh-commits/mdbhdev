@@ -32,7 +32,7 @@ export function BalanceCard({ available, pending, pendingUnlockDays = 7 }: Balan
               <Wallet className="w-4 h-4" />
               <span className="text-sm font-medium">Disponible</span>
             </div>
-            <p className="text-3xl font-bold" data-testid="text-balance-available">
+            <p className="font-bold text-[28px]" data-testid="text-balance-available">
               {formatCurrency(available)}
             </p>
           </div>
