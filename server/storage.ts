@@ -11,6 +11,10 @@ import {
   promotions,
   charities,
   cashbackDonations,
+  giftCards,
+  giftCardPurchases,
+  giftCardBalances,
+  giftCardTransfers,
   generateRevId,
   type User,
   type UpsertUser,
@@ -36,6 +40,14 @@ import {
   type InsertCharity,
   type CashbackDonation,
   type InsertCashbackDonation,
+  type GiftCard,
+  type InsertGiftCard,
+  type GiftCardPurchase,
+  type InsertGiftCardPurchase,
+  type GiftCardBalance,
+  type InsertGiftCardBalance,
+  type GiftCardTransfer,
+  type InsertGiftCardTransfer,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
@@ -153,6 +165,44 @@ export interface IStorage {
     amount: string,
     charityName: string
   ): Promise<{ donation: CashbackDonation; notification: Notification }>;
+  
+  // Gift Card operations
+  getGiftCards(): Promise<GiftCard[]>;
+  getActiveGiftCards(): Promise<GiftCard[]>;
+  getGiftCard(id: string): Promise<GiftCard | undefined>;
+  createGiftCard(giftCard: InsertGiftCard): Promise<GiftCard>;
+  updateGiftCard(id: string, data: Partial<InsertGiftCard>): Promise<GiftCard | undefined>;
+  deleteGiftCard(id: string): Promise<boolean>;
+  
+  // Gift Card Purchase operations
+  createGiftCardPurchase(purchase: InsertGiftCardPurchase): Promise<GiftCardPurchase>;
+  getGiftCardPurchasesByUser(userId: string): Promise<GiftCardPurchase[]>;
+  getGiftCardPurchase(id: string): Promise<GiftCardPurchase | undefined>;
+  
+  // Gift Card Balance operations
+  createGiftCardBalance(balance: InsertGiftCardBalance): Promise<GiftCardBalance>;
+  getGiftCardBalancesByUser(userId: string): Promise<GiftCardBalance[]>;
+  getGiftCardBalance(id: string): Promise<GiftCardBalance | undefined>;
+  updateGiftCardBalance(id: string, data: Partial<InsertGiftCardBalance>): Promise<GiftCardBalance | undefined>;
+  
+  // Gift Card Transfer operations
+  createGiftCardTransfer(transfer: InsertGiftCardTransfer): Promise<GiftCardTransfer>;
+  getGiftCardTransfersByUser(userId: string): Promise<GiftCardTransfer[]>;
+  
+  // Atomic gift card purchase with balance creation
+  purchaseGiftCard(
+    buyerId: string,
+    giftCardId: string,
+    faceValue: string,
+    cashbackRate: string
+  ): Promise<{ purchase: GiftCardPurchase; balance: GiftCardBalance; notification: Notification }>;
+  
+  // Atomic gift card transfer to another user
+  transferGiftCard(
+    fromUserId: string,
+    toRevId: string,
+    balanceId: string
+  ): Promise<{ transfer: GiftCardTransfer; newBalance: GiftCardBalance; notifications: Notification[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -777,6 +827,245 @@ export class DatabaseStorage implements IStorage {
         .returning();
       
       return { donation, notification };
+    });
+  }
+
+  // Gift Card operations
+  async getGiftCards(): Promise<GiftCard[]> {
+    return db.select().from(giftCards).orderBy(desc(giftCards.createdAt));
+  }
+
+  async getActiveGiftCards(): Promise<GiftCard[]> {
+    return db.select().from(giftCards).where(eq(giftCards.isActive, true)).orderBy(desc(giftCards.createdAt));
+  }
+
+  async getGiftCard(id: string): Promise<GiftCard | undefined> {
+    const [giftCard] = await db.select().from(giftCards).where(eq(giftCards.id, id));
+    return giftCard;
+  }
+
+  async createGiftCard(giftCard: InsertGiftCard): Promise<GiftCard> {
+    const [created] = await db.insert(giftCards).values(giftCard).returning();
+    return created;
+  }
+
+  async updateGiftCard(id: string, data: Partial<InsertGiftCard>): Promise<GiftCard | undefined> {
+    const [updated] = await db.update(giftCards).set(data).where(eq(giftCards.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGiftCard(id: string): Promise<boolean> {
+    await db.delete(giftCards).where(eq(giftCards.id, id));
+    return true;
+  }
+
+  // Gift Card Purchase operations
+  async createGiftCardPurchase(purchase: InsertGiftCardPurchase): Promise<GiftCardPurchase> {
+    const [created] = await db.insert(giftCardPurchases).values(purchase).returning();
+    return created;
+  }
+
+  async getGiftCardPurchasesByUser(userId: string): Promise<GiftCardPurchase[]> {
+    return db.select().from(giftCardPurchases).where(eq(giftCardPurchases.buyerId, userId)).orderBy(desc(giftCardPurchases.createdAt));
+  }
+
+  async getGiftCardPurchase(id: string): Promise<GiftCardPurchase | undefined> {
+    const [purchase] = await db.select().from(giftCardPurchases).where(eq(giftCardPurchases.id, id));
+    return purchase;
+  }
+
+  // Gift Card Balance operations
+  async createGiftCardBalance(balance: InsertGiftCardBalance): Promise<GiftCardBalance> {
+    const [created] = await db.insert(giftCardBalances).values(balance).returning();
+    return created;
+  }
+
+  async getGiftCardBalancesByUser(userId: string): Promise<GiftCardBalance[]> {
+    return db.select().from(giftCardBalances).where(and(
+      eq(giftCardBalances.ownerId, userId),
+      eq(giftCardBalances.status, "active")
+    )).orderBy(desc(giftCardBalances.createdAt));
+  }
+
+  async getGiftCardBalance(id: string): Promise<GiftCardBalance | undefined> {
+    const [balance] = await db.select().from(giftCardBalances).where(eq(giftCardBalances.id, id));
+    return balance;
+  }
+
+  async updateGiftCardBalance(id: string, data: Partial<InsertGiftCardBalance>): Promise<GiftCardBalance | undefined> {
+    const [updated] = await db.update(giftCardBalances).set(data).where(eq(giftCardBalances.id, id)).returning();
+    return updated;
+  }
+
+  // Gift Card Transfer operations
+  async createGiftCardTransfer(transfer: InsertGiftCardTransfer): Promise<GiftCardTransfer> {
+    const [created] = await db.insert(giftCardTransfers).values(transfer).returning();
+    return created;
+  }
+
+  async getGiftCardTransfersByUser(userId: string): Promise<GiftCardTransfer[]> {
+    return db.select().from(giftCardTransfers).where(
+      sql`${giftCardTransfers.fromUserId} = ${userId} OR ${giftCardTransfers.toUserId} = ${userId}`
+    ).orderBy(desc(giftCardTransfers.createdAt));
+  }
+
+  // Atomic gift card purchase with balance creation
+  async purchaseGiftCard(
+    buyerId: string,
+    giftCardId: string,
+    faceValue: string,
+    cashbackRate: string
+  ): Promise<{ purchase: GiftCardPurchase; balance: GiftCardBalance; notification: Notification }> {
+    const purchaseAmount = parseFloat(faceValue);
+    const cashbackAmount = purchaseAmount * parseFloat(cashbackRate) / 100;
+    
+    // Calculate unlock date (7 business days)
+    const unlocksAt = new Date();
+    let businessDays = 0;
+    while (businessDays < 7) {
+      unlocksAt.setDate(unlocksAt.getDate() + 1);
+      const dayOfWeek = unlocksAt.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        businessDays++;
+      }
+    }
+    
+    return await db.transaction(async (tx) => {
+      const [purchase] = await tx
+        .insert(giftCardPurchases)
+        .values({
+          buyerId,
+          giftCardId,
+          purchaseAmount: purchaseAmount.toFixed(2),
+          cashbackAmount: cashbackAmount.toFixed(2),
+          status: "active",
+          unlocksAt,
+        })
+        .returning();
+      
+      const [balance] = await tx
+        .insert(giftCardBalances)
+        .values({
+          ownerId: buyerId,
+          giftCardId,
+          purchaseId: purchase.id,
+          remainingValue: purchaseAmount.toFixed(2),
+          status: "active",
+        })
+        .returning();
+      
+      const [notification] = await tx
+        .insert(notifications)
+        .values({
+          userId: buyerId,
+          type: "giftcard_purchased",
+          title: "Carte cadeau achetée",
+          message: `Vous avez acheté une carte cadeau de ${purchaseAmount.toFixed(2)}€ avec ${cashbackAmount.toFixed(2)}€ de cashback (15%)`,
+          isRead: false,
+          metadata: JSON.stringify({ purchaseId: purchase.id, balanceId: balance.id }),
+        })
+        .returning();
+      
+      return { purchase, balance, notification };
+    });
+  }
+
+  // Atomic gift card transfer to another user
+  async transferGiftCard(
+    fromUserId: string,
+    toRevId: string,
+    balanceId: string
+  ): Promise<{ transfer: GiftCardTransfer; newBalance: GiftCardBalance; notifications: Notification[] }> {
+    return await db.transaction(async (tx) => {
+      // Find recipient by REVid
+      const [recipient] = await tx
+        .select()
+        .from(users)
+        .where(sql`${users.revId} = ${toRevId}`);
+      
+      if (!recipient) {
+        throw new Error("Destinataire non trouvé");
+      }
+      
+      if (recipient.id === fromUserId) {
+        throw new Error("Vous ne pouvez pas vous envoyer une carte cadeau");
+      }
+      
+      // Get and lock the balance
+      const [balance] = await tx
+        .select()
+        .from(giftCardBalances)
+        .where(and(
+          eq(giftCardBalances.id, balanceId),
+          eq(giftCardBalances.ownerId, fromUserId),
+          eq(giftCardBalances.status, "active")
+        ))
+        .for("update");
+      
+      if (!balance) {
+        throw new Error("Carte cadeau non trouvée ou déjà utilisée");
+      }
+      
+      // Get sender info
+      const [sender] = await tx.select().from(users).where(eq(users.id, fromUserId));
+      const senderName = sender ? `${sender.firstName || ""} ${(sender.lastName || "").charAt(0)}.`.trim() : "Un utilisateur";
+      
+      // Mark old balance as transferred
+      await tx
+        .update(giftCardBalances)
+        .set({ status: "transferred" })
+        .where(eq(giftCardBalances.id, balanceId));
+      
+      // Create new balance for recipient
+      const [newBalance] = await tx
+        .insert(giftCardBalances)
+        .values({
+          ownerId: recipient.id,
+          giftCardId: balance.giftCardId,
+          purchaseId: balance.purchaseId,
+          remainingValue: balance.remainingValue,
+          status: "active",
+          receivedFromUserId: fromUserId,
+        })
+        .returning();
+      
+      // Create transfer record
+      const [transfer] = await tx
+        .insert(giftCardTransfers)
+        .values({
+          balanceId,
+          fromUserId,
+          toUserId: recipient.id,
+          status: "completed",
+        })
+        .returning();
+      
+      // Create notifications for both parties
+      const [senderNotification] = await tx
+        .insert(notifications)
+        .values({
+          userId: fromUserId,
+          type: "giftcard_sent",
+          title: "Carte cadeau envoyée",
+          message: `Vous avez offert une carte cadeau de ${balance.remainingValue}€ à ${recipient.firstName || "un utilisateur"}`,
+          isRead: false,
+          metadata: JSON.stringify({ transferId: transfer.id, recipientId: recipient.id }),
+        })
+        .returning();
+      
+      const [recipientNotification] = await tx
+        .insert(notifications)
+        .values({
+          userId: recipient.id,
+          type: "giftcard_received",
+          title: "Carte cadeau reçue",
+          message: `${senderName} vous a offert une carte cadeau de ${balance.remainingValue}€`,
+          isRead: false,
+          metadata: JSON.stringify({ transferId: transfer.id, senderId: fromUserId }),
+        })
+        .returning();
+      
+      return { transfer, newBalance, notifications: [senderNotification, recipientNotification] };
     });
   }
 }

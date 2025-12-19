@@ -279,3 +279,81 @@ export const insertCashbackDonationSchema = createInsertSchema(cashbackDonations
 
 export type InsertCashbackDonation = z.infer<typeof insertCashbackDonationSchema>;
 export type CashbackDonation = typeof cashbackDonations.$inferSelect;
+
+// Gift Cards - REV gift cards with 15% cashback
+export const giftCards = pgTable("gift_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  faceValue: decimal("face_value", { precision: 10, scale: 2 }).notNull(), // Card value (e.g., 50€, 100€)
+  cashbackRate: decimal("cashback_rate", { precision: 5, scale: 2 }).default("15.00").notNull(), // 15% cashback
+  imageUrl: text("image_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Gift Card Purchases - When a user buys a gift card
+export const giftCardPurchases = pgTable("gift_card_purchases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  buyerId: varchar("buyer_id").references(() => users.id).notNull(),
+  giftCardId: varchar("gift_card_id").references(() => giftCards.id).notNull(),
+  purchaseAmount: decimal("purchase_amount", { precision: 10, scale: 2 }).notNull(), // Face value paid
+  cashbackAmount: decimal("cashback_amount", { precision: 10, scale: 2 }).notNull(), // 15% of face value
+  status: text("status").notNull().default("active"), // active, used, cancelled, transferred
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  unlocksAt: timestamp("unlocks_at").notNull(), // 7 business days after purchase
+});
+
+// Gift Card Balances - Current ownership of gift cards
+export const giftCardBalances = pgTable("gift_card_balances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").references(() => users.id).notNull(),
+  giftCardId: varchar("gift_card_id").references(() => giftCards.id).notNull(),
+  purchaseId: varchar("purchase_id").references(() => giftCardPurchases.id).notNull(),
+  remainingValue: decimal("remaining_value", { precision: 10, scale: 2 }).notNull(), // Remaining usable value
+  status: text("status").notNull().default("active"), // active, used, expired
+  receivedFromUserId: varchar("received_from_user_id").references(() => users.id), // If received as gift
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Gift Card Transfers - When a user gifts a card to another user
+export const giftCardTransfers = pgTable("gift_card_transfers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  balanceId: varchar("balance_id").references(() => giftCardBalances.id).notNull(),
+  fromUserId: varchar("from_user_id").references(() => users.id).notNull(),
+  toUserId: varchar("to_user_id").references(() => users.id).notNull(),
+  status: text("status").notNull().default("completed"), // completed, cancelled
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertGiftCardSchema = createInsertSchema(giftCards).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGiftCard = z.infer<typeof insertGiftCardSchema>;
+export type GiftCard = typeof giftCards.$inferSelect;
+
+export const insertGiftCardPurchaseSchema = createInsertSchema(giftCardPurchases).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGiftCardPurchase = z.infer<typeof insertGiftCardPurchaseSchema>;
+export type GiftCardPurchase = typeof giftCardPurchases.$inferSelect;
+
+export const insertGiftCardBalanceSchema = createInsertSchema(giftCardBalances).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGiftCardBalance = z.infer<typeof insertGiftCardBalanceSchema>;
+export type GiftCardBalance = typeof giftCardBalances.$inferSelect;
+
+export const insertGiftCardTransferSchema = createInsertSchema(giftCardTransfers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGiftCardTransfer = z.infer<typeof insertGiftCardTransferSchema>;
+export type GiftCardTransfer = typeof giftCardTransfers.$inferSelect;
