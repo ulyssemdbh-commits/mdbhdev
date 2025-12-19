@@ -52,7 +52,7 @@ export function MerchantFilters({
           size="sm"
           variant={activeCategory === "all" ? "default" : "secondary"}
           onClick={() => onCategoryChange("all")}
-          className="flex-shrink-0"
+          className={activeCategory === "all" ? "flex-shrink-0" : "flex-shrink-0 bg-[#f5f5f5] text-[#000000] text-[18px] py-[5px] font-bold"}
           data-testid="filter-category-all"
         >
           Tous
@@ -63,7 +63,7 @@ export function MerchantFilters({
             size="sm"
             variant={activeCategory === cat.name ? "default" : "secondary"}
             onClick={() => onCategoryChange(cat.name)}
-            className="flex-shrink-0"
+            className={activeCategory === cat.name ? "flex-shrink-0" : "flex-shrink-0 bg-[#f5f5f5] text-[#000000] text-[18px] py-[5px] font-bold"}
             data-testid={`filter-category-${cat.id}`}
           >
             {cat.name}
