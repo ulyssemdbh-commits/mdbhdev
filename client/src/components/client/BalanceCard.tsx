@@ -1,4 +1,4 @@
-import { Wallet, Clock } from "lucide-react";
+import { Wallet, Clock, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { format, addBusinessDays } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -22,32 +22,51 @@ export function BalanceCard({ available, pending, pendingUnlockDays = 7 }: Balan
     return format(releaseDate, "d MMMM", { locale: fr });
   };
 
+  const total = available + pending;
+
   return (
-    <Card className="border-card-border bg-primary text-primary-foreground">
-      <CardContent className="p-6">
-        <h2 className="font-semibold mb-4 text-[#d00000] text-center text-[20px]">Ma cagnotte REV</h2>
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1 space-y-1">
-            <div className="flex items-center gap-2 text-primary-foreground/80">
-              <Wallet className="w-4 h-4" />
-              <span className="text-sm font-medium">Disponible</span>
+    <Card className="border-0 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg overflow-hidden">
+      <CardContent className="p-0">
+        <div className="p-6 pb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 bg-primary-foreground/20 rounded-lg">
+              <TrendingUp className="w-5 h-5" />
             </div>
-            <p className="font-bold text-[24px]" data-testid="text-balance-available">
+            <div>
+              <h2 className="text-lg font-semibold">Ma Cagnotte REV</h2>
+              <p className="text-xs text-primary-foreground/70">Votre CashBack cumule</p>
+            </div>
+          </div>
+          
+          <div className="text-center mb-4">
+            <p className="text-4xl font-bold tracking-tight" data-testid="text-balance-total">
+              {formatCurrency(total)}
+            </p>
+            <p className="text-sm text-primary-foreground/70 mt-1">Total CashBack</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 bg-primary-foreground/10 backdrop-blur-sm">
+          <div className="p-4 border-r border-primary-foreground/20">
+            <div className="flex items-center gap-2 text-primary-foreground/80 mb-1">
+              <Wallet className="w-4 h-4" />
+              <span className="text-xs font-medium">Disponible</span>
+            </div>
+            <p className="text-xl font-bold" data-testid="text-balance-available">
               {formatCurrency(available)}
             </p>
           </div>
-          <div className="w-px h-16 bg-primary-foreground/20" />
-          <div className="flex-1 space-y-1">
-            <div className="flex items-center gap-2 text-primary-foreground/80">
+          <div className="p-4">
+            <div className="flex items-center gap-2 text-primary-foreground/80 mb-1">
               <Clock className="w-4 h-4" />
-              <span className="text-sm font-medium">En attente</span>
+              <span className="text-xs font-medium">En attente</span>
             </div>
-            <p className="text-2xl font-semibold" data-testid="text-balance-pending">
+            <p className="text-xl font-semibold" data-testid="text-balance-pending">
               {formatCurrency(pending)}
             </p>
             {pending > 0 && (
-              <p className="text-xs text-primary-foreground/70">
-                Disponible le {getReleaseDate()}
+              <p className="text-[10px] text-primary-foreground/60 mt-0.5">
+                Dispo. le {getReleaseDate()}
               </p>
             )}
           </div>

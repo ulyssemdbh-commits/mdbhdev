@@ -171,9 +171,8 @@ export default function ClientDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <Header title="REV" />
-      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <main className="container max-w-lg px-4 py-6 pb-24">
+      <main className="container max-w-lg px-4 py-6 pb-28">
         <AnimatePresence mode="wait">
           {activeTab === "compte" && (
             <motion.div
@@ -399,6 +398,8 @@ export default function ClientDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }

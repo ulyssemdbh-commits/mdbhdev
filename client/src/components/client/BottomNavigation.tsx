@@ -17,8 +17,8 @@ const tabs = [
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
   return (
-    <nav className="sticky top-0 z-50 bg-background border-b">
-      <div className="flex items-stretch">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t shadow-lg safe-area-bottom">
+      <div className="flex items-stretch max-w-lg mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -26,15 +26,21 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors hover-elevate bg-[#f5f5f5] text-[#0d0d0d] pt-[5px] pb-[5px]"
+              className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-3 px-1 transition-all duration-200 ${
+                isActive 
+                  ? "text-primary" 
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
               data-testid={`nav-tab-${tab.id}`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
-              <span className="text-xs font-semibold text-[#090909]">
+              <div className={`p-1.5 rounded-lg transition-colors ${isActive ? "bg-primary/10" : ""}`}>
+                <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
+              </div>
+              <span className={`text-[10px] font-medium ${isActive ? "font-semibold" : ""}`}>
                 {tab.label}
               </span>
               {isActive && (
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-primary rounded-b-full" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-primary rounded-b-full" />
               )}
             </button>
           );
