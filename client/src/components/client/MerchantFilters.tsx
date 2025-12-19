@@ -53,7 +53,7 @@ export function MerchantFilters({
           variant="ghost"
           onClick={() => onCategoryChange("all")}
           className="flex-shrink-0 font-bold"
-          style={{ backgroundColor: '#f5f5f5', color: '#000000', paddingTop: '0px', paddingBottom: '0px' }}
+          style={{ backgroundColor: '#f5f5f5', color: '#000000', paddingTop: '0px', paddingBottom: '0px', fontSize: '18px' }}
           data-testid="filter-category-all"
         >
           Tous
@@ -65,7 +65,7 @@ export function MerchantFilters({
             variant="ghost"
             onClick={() => onCategoryChange(cat.name)}
             className="flex-shrink-0 font-bold"
-            style={{ backgroundColor: '#f5f5f5', color: '#000000', paddingTop: '0px', paddingBottom: '0px' }}
+            style={{ backgroundColor: '#f5f5f5', color: '#000000', paddingTop: '0px', paddingBottom: '0px', fontSize: '18px' }}
             data-testid={`filter-category-${cat.id}`}
           >
             {cat.name}
@@ -76,7 +76,7 @@ export function MerchantFilters({
           variant="ghost"
           onClick={onProximitySort}
           className="flex-shrink-0 gap-1 font-bold"
-          style={{ backgroundColor: '#f5f5f5', color: '#000000', paddingTop: '0px', paddingBottom: '0px' }}
+          style={{ backgroundColor: '#f5f5f5', color: '#000000', paddingTop: '0px', paddingBottom: '0px', fontSize: '18px' }}
           data-testid="button-proximity-sort"
         >
           <MapPin className="w-3 h-3" />
