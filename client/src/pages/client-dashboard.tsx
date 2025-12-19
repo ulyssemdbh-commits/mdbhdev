@@ -11,6 +11,7 @@ import { MerchantCard, type Merchant } from "@/components/client/MerchantCard";
 import { MerchantFilters } from "@/components/client/MerchantFilters";
 import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavigation";
 import { CashbackTransfer } from "@/components/client/CashbackTransfer";
+import { GiftCardSection } from "@/components/client/GiftCardSection";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Tag, Store, Calendar, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -310,6 +311,19 @@ export default function ClientDashboard() {
                   )}
                 </motion.div>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === "cadeaux" && (
+            <motion.div
+              key="cadeaux"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={fadeInUp}
+              transition={{ duration: 0.2 }}
+            >
+              <GiftCardSection />
             </motion.div>
           )}
 
