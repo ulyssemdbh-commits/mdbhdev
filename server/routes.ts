@@ -653,6 +653,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== CHARITIES API ====================
+  
+  // Get all active charities (public)
+  app.get('/api/charities', async (req, res) => {
+    try {
+      const charitiesList = await storage.getActiveCharities();
+      res.json(charitiesList);
+    } catch (error) {
+      console.error("Error fetching charities:", error);
+      res.status(500).json({ message: "Failed to fetch charities" });
+    }
+  });
+
+  // Get a specific charity
+  app.get('/api/charities/:id', async (req, res) => {
+    try {
+      const charity = await storage.getCharity(req.params.id);
+      if (!charity) {
+        return res.status(404).json({ message: "Charity not found" });
+      }
+      res.json(charity);
+    } catch (error) {
+      console.error("Error fetching charity:", error);
+      res.status(500).json({ message: "Failed to fetch charity" });
+    }
+  });
+
+  // ==================== CASHBACK DONATIONS API ====================
+
+  // Make a donation from cashback balance
+  app.post('/api/donations', isAuthenticated, requireRole('client', 'admin'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const donationSchema = z.object({
+        charityId: z.string(),
+        merchantId: z.string(),
+        amount: z.string().or(z.number()),
+      });
+      
+      const parsed = donationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid donation data", errors: parsed.error.errors });
+      }
+      
+      const { charityId, merchantId, amount } = parsed.data;
+      const donationAmount = parseFloat(String(amount));
+      
+      if (donationAmount <= 0) {
+        return res.status(400).json({ message: "Donation amount must be positive" });
+      }
+      
+      // Verify charity exists
+      const charity = await storage.getCharity(charityId);
+      if (!charity || !charity.isActive) {
+        return res.status(404).json({ message: "Charity not found or inactive" });
+      }
+      
+      // Check user's cashback balance for this merchant
+      const balance = await storage.getCashbackBalance(userId, merchantId);
+      if (!balance || parseFloat(balance.availableBalance) < donationAmount) {
+        return res.status(400).json({ message: "Insufficient cashback balance" });
+      }
+      
+      // Deduct from balance
+      const newBalance = parseFloat(balance.availableBalance) - donationAmount;
+      await storage.upsertCashbackBalance({
+        userId,
+        merchantId,
+        availableBalance: newBalance.toFixed(2),
+        pendingBalance: balance.pendingBalance,
+      });
+      
+      // Create donation record
+      const donation = await storage.createCashbackDonation({
+        userId,
+        charityId,
+        merchantId,
+        amount: donationAmount.toFixed(2),
+        status: "completed",
+      });
+      
+      // Create notification
+      await storage.createNotification({
+        userId,
+        type: "donation_made",
+        title: "Don effectué",
+        message: `Vous avez donné ${donationAmount.toFixed(2)}€ à ${charity.name}`,
+        isRead: false,
+        metadata: JSON.stringify({ charityId, donationId: donation.id }),
+      });
+      
+      res.json({ success: true, donation });
+    } catch (error) {
+      console.error("Error creating donation:", error);
+      res.status(500).json({ message: "Failed to create donation" });
+    }
+  });
+
+  // Get user's donation history
+  app.get('/api/donations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const donations = await storage.getDonationsByUser(userId);
+      res.json(donations);
+    } catch (error) {
+      console.error("Error fetching donations:", error);
+      res.status(500).json({ message: "Failed to fetch donations" });
+    }
+  });
+
   // Admin API - Get stats for admin dashboard
   app.get('/api/admin/stats', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
