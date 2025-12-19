@@ -309,15 +309,15 @@ export default function AdminDashboard() {
         ) : (
           <Tabs defaultValue="dashboard" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="dashboard" className="gap-2" data-testid="tab-dashboard">
+              <TabsTrigger value="dashboard" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-dashboard">
                 <LayoutDashboard className="w-4 h-4" />
                 Tableau de bord
               </TabsTrigger>
-              <TabsTrigger value="merchants" className="gap-2" data-testid="tab-merchants">
+              <TabsTrigger value="merchants" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-merchants">
                 <Store className="w-4 h-4" />
                 Commerçants
               </TabsTrigger>
-              <TabsTrigger value="facturation" className="gap-2" data-testid="tab-facturation">
+              <TabsTrigger value="facturation" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-facturation">
                 <Receipt className="w-4 h-4" />
                 Facturation
               </TabsTrigger>
