@@ -1,5 +1,7 @@
 import { Wallet, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { format, addBusinessDays } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface BalanceCardProps {
   available: number;
@@ -13,6 +15,11 @@ export function BalanceCard({ available, pending, pendingUnlockDays = 7 }: Balan
       style: "currency",
       currency: "EUR",
     }).format(amount);
+  };
+
+  const getReleaseDate = () => {
+    const releaseDate = addBusinessDays(new Date(), pendingUnlockDays);
+    return format(releaseDate, "d MMMM", { locale: fr });
   };
 
   return (
@@ -40,7 +47,7 @@ export function BalanceCard({ available, pending, pendingUnlockDays = 7 }: Balan
             </p>
             {pending > 0 && (
               <p className="text-xs text-primary-foreground/70">
-                Débloqué dans {pendingUnlockDays}j
+                Disponible le {getReleaseDate()}
               </p>
             )}
           </div>
