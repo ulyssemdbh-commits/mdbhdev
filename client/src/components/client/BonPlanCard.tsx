@@ -32,7 +32,7 @@ export function BonPlanCard({ bonPlan, onViewOffer }: BonPlanCardProps) {
             </div>
             {bonPlan.discount && (
               <Badge className="bg-primary text-primary-foreground font-bold" style={{ paddingTop: '11px', paddingBottom: '11px', fontSize: '17px' }}>
-                {bonPlan.discount}
+                {bonPlan.discount.replace(/cashback/gi, 'CashBack')}
               </Badge>
             )}
           </div>
