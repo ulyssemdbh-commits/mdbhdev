@@ -79,7 +79,7 @@ export function TransactionList({ transactions, maxHeight = "400px" }: Transacti
                         <Icon className="w-4 h-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate text-[#0a0a0a]">{tx.merchantName}</p>
+                        <p className="font-medium truncate text-[#0d0d0d]">{tx.merchantName}</p>
                         <p className="text-sm text-muted-foreground">{tx.date}</p>
                       </div>
                     </div>
