@@ -1251,6 +1251,228 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================
+  // Gift Card API Endpoints
+  // ========================
+
+  // Get all gift cards (for clients)
+  app.get('/api/gift-cards', async (req, res) => {
+    try {
+      const giftCards = await storage.getActiveGiftCards();
+      res.json(giftCards);
+    } catch (error) {
+      console.error("Error fetching gift cards:", error);
+      res.status(500).json({ message: "Failed to fetch gift cards" });
+    }
+  });
+
+  // Admin: Get all gift cards
+  app.get('/api/admin/gift-cards', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const giftCards = await storage.getGiftCards();
+      res.json(giftCards);
+    } catch (error) {
+      console.error("Error fetching gift cards:", error);
+      res.status(500).json({ message: "Failed to fetch gift cards" });
+    }
+  });
+
+  // Admin: Create gift card
+  const createGiftCardSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().optional(),
+    faceValue: z.union([z.string(), z.number()]).refine(
+      (val) => {
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return !isNaN(num) && num > 0;
+      },
+      { message: "Face value must be a positive number" }
+    ),
+    cashbackRate: z.union([z.string(), z.number()]).optional().default("15.00"),
+    imageUrl: z.string().optional(),
+    isActive: z.boolean().optional().default(true),
+  });
+
+  app.post('/api/admin/gift-cards', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const validation = createGiftCardSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
+      }
+
+      const { title, description, faceValue, cashbackRate, imageUrl, isActive } = validation.data;
+      const faceValueNum = typeof faceValue === 'string' ? parseFloat(faceValue) : faceValue;
+      const cashbackRateNum = typeof cashbackRate === 'string' ? parseFloat(cashbackRate) : cashbackRate;
+
+      const giftCard = await storage.createGiftCard({
+        title,
+        description: description || null,
+        faceValue: faceValueNum.toFixed(2),
+        cashbackRate: cashbackRateNum.toFixed(2),
+        imageUrl: imageUrl || null,
+        isActive: isActive ?? true,
+      });
+      res.status(201).json(giftCard);
+    } catch (error) {
+      console.error("Error creating gift card:", error);
+      res.status(500).json({ message: "Failed to create gift card" });
+    }
+  });
+
+  // Admin: Update gift card
+  app.patch('/api/admin/gift-cards/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const validation = createGiftCardSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
+      }
+
+      const data = validation.data;
+      const updateData: any = {};
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.faceValue !== undefined) {
+        const faceValueNum = typeof data.faceValue === 'string' ? parseFloat(data.faceValue) : data.faceValue;
+        updateData.faceValue = faceValueNum.toFixed(2);
+      }
+      if (data.cashbackRate !== undefined) {
+        const cashbackRateNum = typeof data.cashbackRate === 'string' ? parseFloat(data.cashbackRate) : data.cashbackRate;
+        updateData.cashbackRate = cashbackRateNum.toFixed(2);
+      }
+      if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+      if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+      const giftCard = await storage.updateGiftCard(req.params.id, updateData);
+      if (!giftCard) {
+        return res.status(404).json({ message: "Gift card not found" });
+      }
+      res.json(giftCard);
+    } catch (error) {
+      console.error("Error updating gift card:", error);
+      res.status(500).json({ message: "Failed to update gift card" });
+    }
+  });
+
+  // Admin: Delete gift card
+  app.delete('/api/admin/gift-cards/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      await storage.deleteGiftCard(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting gift card:", error);
+      res.status(500).json({ message: "Failed to delete gift card" });
+    }
+  });
+
+  // Client: Purchase gift card
+  const purchaseGiftCardSchema = z.object({
+    giftCardId: z.string().min(1, "Gift card ID is required"),
+  });
+
+  app.post('/api/gift-cards/purchase', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validation = purchaseGiftCardSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
+      }
+
+      const { giftCardId } = validation.data;
+      const giftCard = await storage.getGiftCard(giftCardId);
+      if (!giftCard) {
+        return res.status(404).json({ message: "Carte cadeau non trouvée" });
+      }
+
+      if (!giftCard.isActive) {
+        return res.status(400).json({ message: "Cette carte cadeau n'est plus disponible" });
+      }
+
+      const result = await storage.purchaseGiftCard(
+        userId,
+        giftCardId,
+        giftCard.faceValue,
+        giftCard.cashbackRate
+      );
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error purchasing gift card:", error);
+      res.status(500).json({ message: "Failed to purchase gift card" });
+    }
+  });
+
+  // Client: Get my gift card balances
+  app.get('/api/gift-cards/my-balances', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const balances = await storage.getGiftCardBalancesByUser(userId);
+      
+      // Get gift card details for each balance
+      const balancesWithDetails = await Promise.all(
+        balances.map(async (balance) => {
+          const giftCard = await storage.getGiftCard(balance.giftCardId);
+          const purchase = await storage.getGiftCardPurchase(balance.purchaseId);
+          return {
+            ...balance,
+            giftCard,
+            purchase,
+          };
+        })
+      );
+      
+      res.json(balancesWithDetails);
+    } catch (error) {
+      console.error("Error fetching gift card balances:", error);
+      res.status(500).json({ message: "Failed to fetch gift card balances" });
+    }
+  });
+
+  // Client: Get my gift card purchase history
+  app.get('/api/gift-cards/my-purchases', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const purchases = await storage.getGiftCardPurchasesByUser(userId);
+      
+      const purchasesWithDetails = await Promise.all(
+        purchases.map(async (purchase) => {
+          const giftCard = await storage.getGiftCard(purchase.giftCardId);
+          return {
+            ...purchase,
+            giftCard,
+          };
+        })
+      );
+      
+      res.json(purchasesWithDetails);
+    } catch (error) {
+      console.error("Error fetching gift card purchases:", error);
+      res.status(500).json({ message: "Failed to fetch gift card purchases" });
+    }
+  });
+
+  // Client: Transfer gift card to another user via REVid
+  const transferGiftCardSchema = z.object({
+    balanceId: z.string().min(1, "Balance ID is required"),
+    recipientRevId: z.string().min(1, "Recipient REVid is required"),
+  });
+
+  app.post('/api/gift-cards/transfer', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validation = transferGiftCardSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors[0].message });
+      }
+
+      const { balanceId, recipientRevId } = validation.data;
+      const result = await storage.transferGiftCard(userId, recipientRevId, balanceId);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error transferring gift card:", error);
+      res.status(400).json({ message: error.message || "Failed to transfer gift card" });
+    }
+  });
+
   // Unlock pending cashback entries (to be called by cron job)
   app.post('/api/cron/unlock-cashback', async (req, res) => {
     try {
