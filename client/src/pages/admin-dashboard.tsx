@@ -8,6 +8,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { MerchantManagement, type AdminMerchant } from "@/components/admin/MerchantManagement";
 import { CommissionTracker, type WeeklyCommission } from "@/components/admin/CommissionTracker";
 import { BillingTracker } from "@/components/admin/BillingTracker";
+import { BonsPlansManagement } from "@/components/admin/BonsPlansManagement";
 import { AddMerchantDialog } from "@/components/admin/AddMerchantDialog";
 import { EditMerchantDialog } from "@/components/admin/EditMerchantDialog";
 import { DeleteMerchantDialog } from "@/components/admin/DeleteMerchantDialog";
@@ -15,7 +16,7 @@ import { MerchantDetailsDialog } from "@/components/admin/MerchantDetailsDialog"
 import { ClientsListDialog, MerchantsListDialog, TransactionsListDialog, CommissionsListDialog, CategoriesListDialog } from "@/components/admin/AdminDetailDialogs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, LayoutDashboard, Store, Tag, Receipt } from "lucide-react";
+import { Loader2, LayoutDashboard, Store, Tag, Receipt, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -308,7 +309,7 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <Tabs defaultValue="dashboard" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="dashboard" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-dashboard">
                 <LayoutDashboard className="w-4 h-4" />
                 Tableau de bord
@@ -316,6 +317,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="merchants" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-merchants">
                 <Store className="w-4 h-4" />
                 Commerçants
+              </TabsTrigger>
+              <TabsTrigger value="bonsplans" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-bonsplans">
+                <Megaphone className="w-4 h-4" />
+                Bons Plans
               </TabsTrigger>
               <TabsTrigger value="facturation" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-facturation">
                 <Receipt className="w-4 h-4" />
@@ -448,6 +453,16 @@ export default function AdminDashboard() {
                 onEdit={handleEditMerchant}
                 onDelete={handleDeleteMerchant}
               />
+            </TabsContent>
+
+            <TabsContent value="bonsplans" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold">Gestion des Bons Plans</h3>
+                <p className="text-sm text-muted-foreground">
+                  Visualisez et gerez les offres promotionnelles des commercants
+                </p>
+              </div>
+              <BonsPlansManagement />
             </TabsContent>
 
             <TabsContent value="facturation" className="space-y-6">
