@@ -23,7 +23,7 @@ export function QRCodeDisplay({ revId, clientName }: QRCodeDisplayProps) {
           <p className="font-semibold text-lg" data-testid="text-client-name">
             {clientName}
           </p>
-          <p className="text-sm font-mono text-muted-foreground" data-testid="text-rev-id">
+          <p className="text-sm font-mono text-[#ffffff]" data-testid="text-rev-id">
             {revId}
           </p>
         </div>
