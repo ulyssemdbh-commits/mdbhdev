@@ -149,6 +149,13 @@ export interface IStorage {
   createGiftCardPurchase(purchase: InsertGiftCardPurchase): Promise<GiftCardPurchase>;
   getGiftCardPurchasesByUser(userId: string): Promise<GiftCardPurchase[]>;
   getGiftCardPurchase(id: string): Promise<GiftCardPurchase | undefined>;
+  getAllGiftCardPurchases(): Promise<GiftCardPurchase[]>;
+  getGiftCardAnalytics(): Promise<{
+    totalPurchases: number;
+    totalRevenue: number;
+    totalTransferred: number;
+    purchasesByCard: { giftCardId: string; title: string; count: number; revenue: number }[];
+  }>;
   
   // Gift Card Balance operations
   createGiftCardBalance(balance: InsertGiftCardBalance): Promise<GiftCardBalance>;
@@ -726,6 +733,37 @@ export class DatabaseStorage implements IStorage {
   async getGiftCardPurchase(id: string): Promise<GiftCardPurchase | undefined> {
     const [purchase] = await db.select().from(giftCardPurchases).where(eq(giftCardPurchases.id, id));
     return purchase;
+  }
+
+  async getAllGiftCardPurchases(): Promise<GiftCardPurchase[]> {
+    return db.select().from(giftCardPurchases).orderBy(desc(giftCardPurchases.createdAt));
+  }
+
+  async getGiftCardAnalytics(): Promise<{
+    totalPurchases: number;
+    totalRevenue: number;
+    totalTransferred: number;
+    purchasesByCard: { giftCardId: string; title: string; count: number; revenue: number }[];
+  }> {
+    const allPurchases = await db.select().from(giftCardPurchases);
+    const allCards = await db.select().from(giftCards);
+    const allTransfers = await db.select().from(giftCardTransfers);
+    
+    const totalPurchases = allPurchases.length;
+    const totalRevenue = allPurchases.reduce((sum, p) => sum + parseFloat(p.purchaseAmount), 0);
+    const totalTransferred = allTransfers.length;
+    
+    const purchasesByCard = allCards.map(card => {
+      const cardPurchases = allPurchases.filter(p => p.giftCardId === card.id);
+      return {
+        giftCardId: card.id,
+        title: card.title,
+        count: cardPurchases.length,
+        revenue: cardPurchases.reduce((sum, p) => sum + parseFloat(p.purchaseAmount), 0),
+      };
+    }).filter(c => c.count > 0);
+    
+    return { totalPurchases, totalRevenue, totalTransferred, purchasesByCard };
   }
 
   // Gift Card Balance operations

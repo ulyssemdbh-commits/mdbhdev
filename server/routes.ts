@@ -1263,6 +1263,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Get all gift card purchases
+  app.get('/api/admin/gift-cards/purchases', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const purchases = await storage.getAllGiftCardPurchases();
+      const purchasesWithDetails = await Promise.all(
+        purchases.map(async (purchase) => {
+          const giftCard = await storage.getGiftCard(purchase.giftCardId);
+          const buyer = await storage.getUser(purchase.buyerId);
+          return {
+            ...purchase,
+            giftCard,
+            buyerName: buyer ? `${buyer.firstName || ''} ${buyer.lastName || ''}`.trim() || buyer.email : 'Inconnu',
+            buyerEmail: buyer?.email || '',
+          };
+        })
+      );
+      res.json(purchasesWithDetails);
+    } catch (error) {
+      console.error("Error fetching gift card purchases:", error);
+      res.status(500).json({ message: "Failed to fetch gift card purchases" });
+    }
+  });
+
+  // Admin: Get gift card analytics
+  app.get('/api/admin/gift-cards/analytics', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const analytics = await storage.getGiftCardAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching gift card analytics:", error);
+      res.status(500).json({ message: "Failed to fetch gift card analytics" });
+    }
+  });
+
   // Admin: Create gift card
   const createGiftCardSchema = z.object({
     title: z.string().min(1, "Title is required"),
