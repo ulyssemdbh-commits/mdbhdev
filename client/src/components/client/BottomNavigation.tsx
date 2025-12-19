@@ -29,7 +29,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               data-testid={`nav-tab-${tab.id}`}
             >
               <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
-              <span className={`text-xs ${isActive ? "font-semibold" : "font-medium"}`}>
+              <span className="text-xs font-semibold text-[#090909]">
                 {tab.label}
               </span>
               {isActive && (
