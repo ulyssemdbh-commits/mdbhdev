@@ -659,6 +659,10 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(promotions.createdAt));
   }
 
+  async getAllPromotions(): Promise<Promotion[]> {
+    return db.select().from(promotions).orderBy(desc(promotions.createdAt));
+  }
+
   async createPromotion(promotion: InsertPromotion): Promise<Promotion> {
     const [created] = await db.insert(promotions).values(promotion).returning();
     return created;

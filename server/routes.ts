@@ -1091,6 +1091,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Promotions (Bons Plans) Management
+  app.get('/api/admin/promotions', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const promos = await storage.getAllPromotions();
+      const enrichedPromos = await Promise.all(promos.map(async (promo) => {
+        const merchant = await storage.getMerchant(promo.merchantId);
+        return {
+          ...promo,
+          merchantName: merchant?.name || "Inconnu",
+          merchantCategory: merchant?.category || "Non categorise",
+        };
+      }));
+      res.json(enrichedPromos);
+    } catch (error) {
+      console.error("Error fetching all promotions:", error);
+      res.status(500).json({ message: "Failed to fetch promotions" });
+    }
+  });
+
+  app.delete('/api/admin/promotions/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      await storage.deletePromotion(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting promotion:", error);
+      res.status(500).json({ message: "Failed to delete promotion" });
+    }
+  });
+
+  app.patch('/api/admin/promotions/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const { isActive } = req.body;
+      const updated = await storage.updatePromotion(req.params.id, { isActive });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating promotion:", error);
+      res.status(500).json({ message: "Failed to update promotion" });
+    }
+  });
+
   // Merchant billing routes
   app.get('/api/admin/billings', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
