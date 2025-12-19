@@ -50,11 +50,11 @@ export function MerchantFilters({
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <Button
           size="sm"
-          variant="secondary"
+          variant="ghost"
           onClick={() => onCategoryChange("all")}
           className={activeCategory === "all" 
-            ? "flex-shrink-0 font-bold bg-[#f5f5f5] text-[#000000] border-2 border-[#000000]" 
-            : "flex-shrink-0 font-bold bg-[#f5f5f5] text-[#000000]"}
+            ? "flex-shrink-0 font-bold !bg-[#f5f5f5] !text-[#000000] border-2 border-[#000000]" 
+            : "flex-shrink-0 font-bold !bg-[#f5f5f5] !text-[#000000]"}
           data-testid="filter-category-all"
         >
           Tous
@@ -63,11 +63,11 @@ export function MerchantFilters({
           <Button
             key={cat.id}
             size="sm"
-            variant="secondary"
+            variant="ghost"
             onClick={() => onCategoryChange(cat.name)}
             className={activeCategory === cat.name 
-              ? "flex-shrink-0 font-bold bg-[#f5f5f5] text-[#000000] border-2 border-[#000000]" 
-              : "flex-shrink-0 font-bold bg-[#f5f5f5] text-[#000000]"}
+              ? "flex-shrink-0 font-bold !bg-[#f5f5f5] !text-[#000000] border-2 border-[#000000]" 
+              : "flex-shrink-0 font-bold !bg-[#f5f5f5] !text-[#000000]"}
             data-testid={`filter-category-${cat.id}`}
           >
             {cat.name}
@@ -75,9 +75,9 @@ export function MerchantFilters({
         ))}
         <Button
           size="sm"
-          variant="secondary"
+          variant="ghost"
           onClick={onProximitySort}
-          className="flex-shrink-0 gap-1 font-bold bg-[#f5f5f5] text-[#000000]"
+          className="flex-shrink-0 gap-1 font-bold !bg-[#f5f5f5] !text-[#000000]"
           data-testid="button-proximity-sort"
         >
           <MapPin className="w-3 h-3" />
