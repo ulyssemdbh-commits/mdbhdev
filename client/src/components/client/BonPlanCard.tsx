@@ -31,7 +31,7 @@ export function BonPlanCard({ bonPlan, onViewOffer }: BonPlanCardProps) {
               <Tag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             {bonPlan.discount && (
-              <Badge className="bg-primary text-primary-foreground">
+              <Badge className="bg-primary text-primary-foreground font-bold" style={{ paddingTop: '11px', paddingBottom: '11px', fontSize: '17px' }}>
                 {bonPlan.discount}
               </Badge>
             )}
