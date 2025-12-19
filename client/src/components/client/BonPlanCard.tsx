@@ -37,7 +37,7 @@ export function BonPlanCard({ bonPlan, onViewOffer }: BonPlanCardProps) {
             )}
           </div>
           {bonPlan.validUntil && (
-            <span className="text-xs flex-shrink-0 text-[#d00000]">
+            <span className="flex-shrink-0 text-[#d00000] text-[15px]">
               Jusqu'au {bonPlan.validUntil}
             </span>
           )}
