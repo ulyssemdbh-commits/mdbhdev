@@ -144,6 +144,15 @@ export interface IStorage {
   getDonationsByUser(userId: string): Promise<CashbackDonation[]>;
   getDonationsByCharity(charityId: string): Promise<CashbackDonation[]>;
   getTotalDonationsByCharity(charityId: string): Promise<number>;
+  
+  // Atomic donation with balance deduction
+  processCashbackDonation(
+    userId: string,
+    charityId: string,
+    merchantId: string,
+    amount: string,
+    charityName: string
+  ): Promise<{ donation: CashbackDonation; notification: Notification }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -712,6 +721,63 @@ export class DatabaseStorage implements IStorage {
         eq(cashbackDonations.status, "completed")
       ));
     return Number(result[0]?.total || 0);
+  }
+
+  async processCashbackDonation(
+    userId: string,
+    charityId: string,
+    merchantId: string,
+    amount: string,
+    charityName: string
+  ): Promise<{ donation: CashbackDonation; notification: Notification }> {
+    const donationAmount = parseFloat(amount);
+    
+    return await db.transaction(async (tx) => {
+      const [balance] = await tx
+        .select()
+        .from(cashbackBalances)
+        .where(and(
+          eq(cashbackBalances.userId, userId),
+          eq(cashbackBalances.merchantId, merchantId)
+        ))
+        .for("update");
+      
+      if (!balance || parseFloat(balance.availableBalance) < donationAmount) {
+        throw new Error("Insufficient cashback balance");
+      }
+      
+      const newBalance = parseFloat(balance.availableBalance) - donationAmount;
+      
+      await tx
+        .update(cashbackBalances)
+        .set({ availableBalance: newBalance.toFixed(2) })
+        .where(eq(cashbackBalances.id, balance.id));
+      
+      const [donation] = await tx
+        .insert(cashbackDonations)
+        .values({
+          userId,
+          charityId,
+          merchantId,
+          amount: donationAmount.toFixed(2),
+          status: "completed",
+        })
+        .returning();
+      
+      const [notification] = await tx
+        .insert(notifications)
+        .values({
+          userId,
+          type: "donation_made",
+          title: "Don effectué",
+          message: `Vous avez donné ${donationAmount.toFixed(2)}€ à ${charityName}`,
+          isRead: false,
+          metadata: JSON.stringify({ charityId, donationId: donation.id }),
+        })
+        .returning();
+      
+      return { donation, notification };
+    });
   }
 }
 

@@ -682,7 +682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== CASHBACK DONATIONS API ====================
 
-  // Make a donation from cashback balance
+  // Make a donation from cashback balance (atomic transaction)
   app.post('/api/donations', isAuthenticated, requireRole('client', 'admin'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -711,43 +711,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Charity not found or inactive" });
       }
       
-      // Check user's cashback balance for this merchant
-      const balance = await storage.getCashbackBalance(userId, merchantId);
-      if (!balance || parseFloat(balance.availableBalance) < donationAmount) {
-        return res.status(400).json({ message: "Insufficient cashback balance" });
-      }
-      
-      // Deduct from balance
-      const newBalance = parseFloat(balance.availableBalance) - donationAmount;
-      await storage.upsertCashbackBalance({
-        userId,
-        merchantId,
-        availableBalance: newBalance.toFixed(2),
-        pendingBalance: balance.pendingBalance,
-      });
-      
-      // Create donation record
-      const donation = await storage.createCashbackDonation({
+      // Process donation atomically (balance check, deduction, donation, notification in one transaction)
+      const result = await storage.processCashbackDonation(
         userId,
         charityId,
         merchantId,
-        amount: donationAmount.toFixed(2),
-        status: "completed",
-      });
+        donationAmount.toFixed(2),
+        charity.name
+      );
       
-      // Create notification
-      await storage.createNotification({
-        userId,
-        type: "donation_made",
-        title: "Don effectué",
-        message: `Vous avez donné ${donationAmount.toFixed(2)}€ à ${charity.name}`,
-        isRead: false,
-        metadata: JSON.stringify({ charityId, donationId: donation.id }),
-      });
-      
-      res.json({ success: true, donation });
-    } catch (error) {
+      res.json({ success: true, donation: result.donation });
+    } catch (error: any) {
       console.error("Error creating donation:", error);
+      if (error.message === "Insufficient cashback balance") {
+        return res.status(400).json({ message: "Solde insuffisant" });
+      }
       res.status(500).json({ message: "Failed to create donation" });
     }
   });
