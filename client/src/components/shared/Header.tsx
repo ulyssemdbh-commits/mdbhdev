@@ -29,7 +29,7 @@ export function Header({ title = "REV", showLogout = true, showNotifications = t
         <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary">
           <MapPin className="w-5 h-5 text-primary-foreground" />
         </div>
-        <span className="font-bold text-[24px]">{title}</span>
+        <span className="font-bold text-[24px] text-justify">{title}</span>
       </div>
       <div className="flex items-center gap-1">
         {showNotifications && <NotificationBell />}
