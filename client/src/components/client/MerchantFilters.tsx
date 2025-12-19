@@ -63,9 +63,7 @@ export function MerchantFilters({
             size="sm"
             variant="ghost"
             onClick={() => onCategoryChange(cat.name)}
-            className={activeCategory === cat.name 
-              ? "flex-shrink-0 font-bold !bg-[#f5f5f5] !text-[#000000] border-2 border-[#000000]" 
-              : "flex-shrink-0 font-bold !bg-[#f5f5f5] !text-[#000000]"}
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border [border-color:var(--button-outline)] shadow-xs active:shadow-none min-h-9 px-4 py-2 w-full gap-2 font-bold text-[20px] text-[#000000] bg-[#f5f5f5]"
             data-testid={`filter-category-${cat.id}`}
           >
             {cat.name}
