@@ -9,8 +9,6 @@ import {
   merchantBillings,
   notifications,
   promotions,
-  charities,
-  cashbackDonations,
   giftCards,
   giftCardPurchases,
   giftCardBalances,
@@ -36,10 +34,6 @@ import {
   type InsertNotification,
   type Promotion,
   type InsertPromotion,
-  type Charity,
-  type InsertCharity,
-  type CashbackDonation,
-  type InsertCashbackDonation,
   type GiftCard,
   type InsertGiftCard,
   type GiftCardPurchase,
@@ -142,29 +136,6 @@ export interface IStorage {
   updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<boolean>;
   getPromotionWeeksForPeriod(merchantId: string, periodStart: Date, periodEnd: Date): Promise<number>;
-  
-  // Charity operations
-  getCharities(): Promise<Charity[]>;
-  getActiveCharities(): Promise<Charity[]>;
-  getCharity(id: string): Promise<Charity | undefined>;
-  createCharity(charity: InsertCharity): Promise<Charity>;
-  updateCharity(id: string, data: Partial<InsertCharity>): Promise<Charity | undefined>;
-  deleteCharity(id: string): Promise<boolean>;
-  
-  // Cashback donation operations
-  createCashbackDonation(donation: InsertCashbackDonation): Promise<CashbackDonation>;
-  getDonationsByUser(userId: string): Promise<CashbackDonation[]>;
-  getDonationsByCharity(charityId: string): Promise<CashbackDonation[]>;
-  getTotalDonationsByCharity(charityId: string): Promise<number>;
-  
-  // Atomic donation with balance deduction
-  processCashbackDonation(
-    userId: string,
-    charityId: string,
-    merchantId: string,
-    amount: string,
-    charityName: string
-  ): Promise<{ donation: CashbackDonation; notification: Notification }>;
   
   // Gift Card operations
   getGiftCards(): Promise<GiftCard[]>;
@@ -711,127 +682,6 @@ export class DatabaseStorage implements IStorage {
     }
     
     return totalWeeks;
-  }
-
-  // Charity operations
-  async getCharities(): Promise<Charity[]> {
-    return db.select().from(charities).orderBy(charities.name);
-  }
-
-  async getActiveCharities(): Promise<Charity[]> {
-    return db.select().from(charities)
-      .where(eq(charities.isActive, true))
-      .orderBy(charities.name);
-  }
-
-  async getCharity(id: string): Promise<Charity | undefined> {
-    const [charity] = await db.select().from(charities).where(eq(charities.id, id));
-    return charity;
-  }
-
-  async createCharity(charity: InsertCharity): Promise<Charity> {
-    const [created] = await db.insert(charities).values(charity).returning();
-    return created;
-  }
-
-  async updateCharity(id: string, data: Partial<InsertCharity>): Promise<Charity | undefined> {
-    const [updated] = await db
-      .update(charities)
-      .set(data)
-      .where(eq(charities.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteCharity(id: string): Promise<boolean> {
-    await db.delete(charities).where(eq(charities.id, id));
-    return true;
-  }
-
-  // Cashback donation operations
-  async createCashbackDonation(donation: InsertCashbackDonation): Promise<CashbackDonation> {
-    const [created] = await db.insert(cashbackDonations).values(donation).returning();
-    return created;
-  }
-
-  async getDonationsByUser(userId: string): Promise<CashbackDonation[]> {
-    return db.select().from(cashbackDonations)
-      .where(eq(cashbackDonations.userId, userId))
-      .orderBy(desc(cashbackDonations.createdAt));
-  }
-
-  async getDonationsByCharity(charityId: string): Promise<CashbackDonation[]> {
-    return db.select().from(cashbackDonations)
-      .where(eq(cashbackDonations.charityId, charityId))
-      .orderBy(desc(cashbackDonations.createdAt));
-  }
-
-  async getTotalDonationsByCharity(charityId: string): Promise<number> {
-    const result = await db
-      .select({ total: sql<number>`COALESCE(SUM(${cashbackDonations.amount}), 0)` })
-      .from(cashbackDonations)
-      .where(and(
-        eq(cashbackDonations.charityId, charityId),
-        eq(cashbackDonations.status, "completed")
-      ));
-    return Number(result[0]?.total || 0);
-  }
-
-  async processCashbackDonation(
-    userId: string,
-    charityId: string,
-    merchantId: string,
-    amount: string,
-    charityName: string
-  ): Promise<{ donation: CashbackDonation; notification: Notification }> {
-    const donationAmount = parseFloat(amount);
-    
-    return await db.transaction(async (tx) => {
-      const [balance] = await tx
-        .select()
-        .from(cashbackBalances)
-        .where(and(
-          eq(cashbackBalances.userId, userId),
-          eq(cashbackBalances.merchantId, merchantId)
-        ))
-        .for("update");
-      
-      if (!balance || parseFloat(balance.availableBalance) < donationAmount) {
-        throw new Error("Insufficient cashback balance");
-      }
-      
-      const newBalance = parseFloat(balance.availableBalance) - donationAmount;
-      
-      await tx
-        .update(cashbackBalances)
-        .set({ availableBalance: newBalance.toFixed(2) })
-        .where(eq(cashbackBalances.id, balance.id));
-      
-      const [donation] = await tx
-        .insert(cashbackDonations)
-        .values({
-          userId,
-          charityId,
-          merchantId,
-          amount: donationAmount.toFixed(2),
-          status: "completed",
-        })
-        .returning();
-      
-      const [notification] = await tx
-        .insert(notifications)
-        .values({
-          userId,
-          type: "donation_made",
-          title: "Don effectué",
-          message: `Vous avez donné ${donationAmount.toFixed(2)}€ à ${charityName}`,
-          isRead: false,
-          metadata: JSON.stringify({ charityId, donationId: donation.id }),
-        })
-        .returning();
-      
-      return { donation, notification };
-    });
   }
 
   // Gift Card operations

@@ -241,45 +241,6 @@ export const insertPromotionSchema = createInsertSchema(promotions).omit({
 export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
 
-// Charities - Organizations that can receive cashback donations
-export const charities = pgTable("charities", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  description: text("description"),
-  category: text("category").notNull(), // environment, health, education, social, animals, etc.
-  logoUrl: text("logo_url"),
-  websiteUrl: text("website_url"),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// Cashback donations from users to charities
-export const cashbackDonations = pgTable("cashback_donations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  charityId: varchar("charity_id").references(() => charities.id).notNull(),
-  merchantId: varchar("merchant_id").references(() => merchants.id).notNull(), // Source merchant balance
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("completed"), // completed, cancelled
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertCharitySchema = createInsertSchema(charities).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertCharity = z.infer<typeof insertCharitySchema>;
-export type Charity = typeof charities.$inferSelect;
-
-export const insertCashbackDonationSchema = createInsertSchema(cashbackDonations).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertCashbackDonation = z.infer<typeof insertCashbackDonationSchema>;
-export type CashbackDonation = typeof cashbackDonations.$inferSelect;
-
 // Gift Cards - REV gift cards with 15% cashback
 export const giftCards = pgTable("gift_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
