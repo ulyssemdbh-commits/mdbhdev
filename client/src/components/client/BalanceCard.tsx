@@ -25,7 +25,7 @@ export function BalanceCard({ available, pending, pendingUnlockDays = 7 }: Balan
   return (
     <Card className="border-card-border bg-primary text-primary-foreground">
       <CardContent className="p-6">
-        <h2 className="text-lg font-semibold mb-4 text-[#d00000]">Ma cagnotte REV</h2>
+        <h2 className="font-semibold mb-4 text-[#d00000] text-center text-[20px]">Ma cagnotte REV</h2>
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 space-y-1">
             <div className="flex items-center gap-2 text-primary-foreground/80">
