@@ -1006,6 +1006,16 @@ export class DatabaseStorage implements IStorage {
         throw new Error("Carte cadeau non trouvée ou déjà utilisée");
       }
       
+      // Check if the gift card purchase is unlocked (7 business days have passed)
+      const [purchase] = await tx
+        .select()
+        .from(giftCardPurchases)
+        .where(eq(giftCardPurchases.id, balance.purchaseId));
+      
+      if (purchase && purchase.unlocksAt && new Date() < new Date(purchase.unlocksAt)) {
+        throw new Error("Cette carte cadeau est encore en période de blocage");
+      }
+      
       // Get sender info
       const [sender] = await tx.select().from(users).where(eq(users.id, fromUserId));
       const senderName = sender ? `${sender.firstName || ""} ${(sender.lastName || "").charAt(0)}.`.trim() : "Un utilisateur";

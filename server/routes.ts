@@ -1465,11 +1465,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { balanceId, recipientRevId } = validation.data;
+      
+      // Pre-verify ownership before calling storage to avoid enumeration attacks
+      const balance = await storage.getGiftCardBalance(balanceId);
+      if (!balance || balance.ownerId !== userId || balance.status !== "active") {
+        return res.status(404).json({ message: "Carte cadeau non trouvee" });
+      }
+      
       const result = await storage.transferGiftCard(userId, recipientRevId, balanceId);
       res.status(201).json(result);
     } catch (error: any) {
       console.error("Error transferring gift card:", error);
-      res.status(400).json({ message: error.message || "Failed to transfer gift card" });
+      // Return generic error message to avoid information leakage
+      const message = error.message?.includes("non trouve") || error.message?.includes("not found") 
+        ? "Operation impossible" 
+        : (error.message || "Echec du transfert");
+      res.status(400).json({ message });
     }
   });
 

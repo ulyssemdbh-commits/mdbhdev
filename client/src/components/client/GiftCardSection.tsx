@@ -114,36 +114,48 @@ export function GiftCardSection() {
             Mes Cartes Cadeaux
           </h2>
           <div className="space-y-3">
-            {myBalances.map((balance) => (
-              <Card key={balance.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Gift className="w-4 h-4 text-primary" />
-                        <span className="font-medium">{balance.giftCard?.title || "Carte Cadeau"}</span>
+            {myBalances.map((balance) => {
+              const unlocksAt = balance.purchase?.unlocksAt ? new Date(balance.purchase.unlocksAt) : null;
+              const isLocked = unlocksAt ? new Date() < unlocksAt : false;
+              return (
+                <Card key={balance.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Gift className="w-4 h-4 text-primary" />
+                          <span className="font-medium">{balance.giftCard?.title || "Carte Cadeau"}</span>
+                        </div>
+                        <div className="text-2xl font-bold text-primary">{parseFloat(balance.remainingValue).toFixed(2)} EUR</div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {balance.receivedFromUserId && (
+                            <Badge variant="secondary" className="text-xs" style={{ padding: "2px 8px", fontSize: "11px" }}>
+                              Recu en cadeau
+                            </Badge>
+                          )}
+                          {isLocked && unlocksAt && (
+                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-300" style={{ padding: "2px 8px", fontSize: "11px" }}>
+                              Disponible le {unlocksAt.toLocaleDateString("fr-FR")}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-2xl font-bold text-primary">{parseFloat(balance.remainingValue).toFixed(2)} EUR</div>
-                      {balance.receivedFromUserId && (
-                        <Badge variant="secondary" className="mt-1 text-xs" style={{ padding: "2px 8px", fontSize: "11px" }}>
-                          Recu en cadeau
-                        </Badge>
-                      )}
+                      <Button
+                        onClick={() => openTransferDialog(balance)}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        style={{ backgroundColor: "#f5f5f5", color: "#000000" }}
+                        disabled={isLocked}
+                        data-testid={`button-transfer-giftcard-${balance.id}`}
+                      >
+                        <Send className="w-4 h-4" />
+                        Offrir
+                      </Button>
                     </div>
-                    <Button
-                      onClick={() => openTransferDialog(balance)}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                      style={{ backgroundColor: "#f5f5f5", color: "#000000" }}
-                      data-testid={`button-transfer-giftcard-${balance.id}`}
-                    >
-                      <Send className="w-4 h-4" />
-                      Offrir
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
       )}
