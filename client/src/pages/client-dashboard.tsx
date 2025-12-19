@@ -157,7 +157,9 @@ export default function ClientDashboard() {
   });
 
   const clientName = typedUser
-    ? `${typedUser.firstName || ""} ${typedUser.lastName || ""}`.trim() || typedUser.email || "Client"
+    ? (typedUser.firstName && typedUser.lastName 
+        ? `${typedUser.firstName} ${typedUser.lastName.charAt(0).toUpperCase()}.`
+        : typedUser.firstName || typedUser.email || "Client")
     : "Client";
 
   const clientRevId = typedUser?.revId || "REVid-000000";
