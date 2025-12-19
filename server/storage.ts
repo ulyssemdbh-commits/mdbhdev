@@ -9,6 +9,8 @@ import {
   merchantBillings,
   notifications,
   promotions,
+  charities,
+  cashbackDonations,
   generateRevId,
   type User,
   type UpsertUser,
@@ -30,6 +32,10 @@ import {
   type InsertNotification,
   type Promotion,
   type InsertPromotion,
+  type Charity,
+  type InsertCharity,
+  type CashbackDonation,
+  type InsertCashbackDonation,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
@@ -124,6 +130,20 @@ export interface IStorage {
   updatePromotion(id: string, data: Partial<InsertPromotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<boolean>;
   getPromotionWeeksForPeriod(merchantId: string, periodStart: Date, periodEnd: Date): Promise<number>;
+  
+  // Charity operations
+  getCharities(): Promise<Charity[]>;
+  getActiveCharities(): Promise<Charity[]>;
+  getCharity(id: string): Promise<Charity | undefined>;
+  createCharity(charity: InsertCharity): Promise<Charity>;
+  updateCharity(id: string, data: Partial<InsertCharity>): Promise<Charity | undefined>;
+  deleteCharity(id: string): Promise<boolean>;
+  
+  // Cashback donation operations
+  createCashbackDonation(donation: InsertCashbackDonation): Promise<CashbackDonation>;
+  getDonationsByUser(userId: string): Promise<CashbackDonation[]>;
+  getDonationsByCharity(charityId: string): Promise<CashbackDonation[]>;
+  getTotalDonationsByCharity(charityId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -628,6 +648,70 @@ export class DatabaseStorage implements IStorage {
     }
     
     return totalWeeks;
+  }
+
+  // Charity operations
+  async getCharities(): Promise<Charity[]> {
+    return db.select().from(charities).orderBy(charities.name);
+  }
+
+  async getActiveCharities(): Promise<Charity[]> {
+    return db.select().from(charities)
+      .where(eq(charities.isActive, true))
+      .orderBy(charities.name);
+  }
+
+  async getCharity(id: string): Promise<Charity | undefined> {
+    const [charity] = await db.select().from(charities).where(eq(charities.id, id));
+    return charity;
+  }
+
+  async createCharity(charity: InsertCharity): Promise<Charity> {
+    const [created] = await db.insert(charities).values(charity).returning();
+    return created;
+  }
+
+  async updateCharity(id: string, data: Partial<InsertCharity>): Promise<Charity | undefined> {
+    const [updated] = await db
+      .update(charities)
+      .set(data)
+      .where(eq(charities.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCharity(id: string): Promise<boolean> {
+    await db.delete(charities).where(eq(charities.id, id));
+    return true;
+  }
+
+  // Cashback donation operations
+  async createCashbackDonation(donation: InsertCashbackDonation): Promise<CashbackDonation> {
+    const [created] = await db.insert(cashbackDonations).values(donation).returning();
+    return created;
+  }
+
+  async getDonationsByUser(userId: string): Promise<CashbackDonation[]> {
+    return db.select().from(cashbackDonations)
+      .where(eq(cashbackDonations.userId, userId))
+      .orderBy(desc(cashbackDonations.createdAt));
+  }
+
+  async getDonationsByCharity(charityId: string): Promise<CashbackDonation[]> {
+    return db.select().from(cashbackDonations)
+      .where(eq(cashbackDonations.charityId, charityId))
+      .orderBy(desc(cashbackDonations.createdAt));
+  }
+
+  async getTotalDonationsByCharity(charityId: string): Promise<number> {
+    const result = await db
+      .select({ total: sql<number>`COALESCE(SUM(${cashbackDonations.amount}), 0)` })
+      .from(cashbackDonations)
+      .where(and(
+        eq(cashbackDonations.charityId, charityId),
+        eq(cashbackDonations.status, "completed")
+      ));
+    return Number(result[0]?.total || 0);
   }
 }
 
