@@ -20,7 +20,7 @@ export function Header({ title = "REV", showLogout = true, showNotifications = t
     } catch (error) {
       console.error("Logout error:", error);
     }
-    window.location.href = "/";
+    window.location.href = "/login";
   };
 
   return (
