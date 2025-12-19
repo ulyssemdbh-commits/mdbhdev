@@ -10,7 +10,7 @@ export function QRCodeDisplay({ revId, clientName }: QRCodeDisplayProps) {
   return (
     <Card className="border-card-border">
       <CardContent className="flex flex-col items-center p-6 gap-4">
-        <p className="text-[#db0000] text-[18px] font-bold">QR-Code à présenter</p>
+        <p className="text-[18px] font-bold text-[#d00000]">QR-Code à présenter</p>
         <div className="bg-white p-4 rounded-md">
           <QRCode
             value={revId}
