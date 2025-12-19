@@ -12,7 +12,10 @@ import { MerchantFilters } from "@/components/client/MerchantFilters";
 import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavigation";
 import { CashbackTransfer } from "@/components/client/CashbackTransfer";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { Loader2, Tag, Store, Calendar, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { User, Merchant as APIMerchant, CashbackBalance, Promotion } from "@shared/schema";
 
 const fadeInUp = {
@@ -35,6 +38,7 @@ export default function ClientDashboard() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [bonsPlansSearchQuery, setBonsPlansSearchQuery] = useState("");
   const [bonsPlansCategory, setBonsPlansCategory] = useState<string>("all");
+  const [selectedOffer, setSelectedOffer] = useState<BonPlan | null>(null);
 
   const { user } = useAuth();
   const typedUser = user as User | undefined;
@@ -237,7 +241,7 @@ export default function ClientDashboard() {
                       >
                         <BonPlanCard
                           bonPlan={bp}
-                          onViewOffer={() => console.log("View offer:", bp.id)}
+                          onViewOffer={() => setSelectedOffer(bp)}
                         />
                       </motion.div>
                     ))
@@ -308,6 +312,63 @@ export default function ClientDashboard() {
 
         </AnimatePresence>
       </main>
+
+      <Dialog open={!!selectedOffer} onOpenChange={(open) => !open && setSelectedOffer(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="w-5 h-5 text-primary" />
+              Détails de l'offre
+            </DialogTitle>
+          </DialogHeader>
+          {selectedOffer && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-12 h-12 rounded-md bg-amber-100 dark:bg-amber-900/30">
+                  <Tag className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">{selectedOffer.title}</h3>
+                  {selectedOffer.discount && (
+                    <Badge className="bg-primary text-primary-foreground mt-1">
+                      {selectedOffer.discount}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-muted-foreground">{selectedOffer.description}</p>
+
+              <div className="flex items-center gap-2 text-sm">
+                <Store className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">{selectedOffer.merchantName}</span>
+                <Badge variant="secondary">{selectedOffer.category}</Badge>
+              </div>
+
+              {selectedOffer.validUntil && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4" />
+                  <span>Valable jusqu'au {selectedOffer.validUntil}</span>
+                </div>
+              )}
+
+              <div className="pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Rendez-vous chez le commerçant et présentez votre code QR pour profiter de cette offre.
+                </p>
+              </div>
+
+              <Button 
+                className="w-full" 
+                onClick={() => setSelectedOffer(null)}
+                data-testid="button-close-offer-dialog"
+              >
+                Fermer
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
