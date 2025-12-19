@@ -917,7 +917,8 @@ export class DatabaseStorage implements IStorage {
     cashbackRate: string
   ): Promise<{ purchase: GiftCardPurchase; balance: GiftCardBalance; notification: Notification }> {
     const purchaseAmount = parseFloat(faceValue);
-    const cashbackAmount = purchaseAmount * parseFloat(cashbackRate) / 100;
+    // No cashback for gift card purchases
+    const cashbackAmount = 0;
     
     // Calculate unlock date (7 business days)
     const unlocksAt = new Date();
@@ -960,7 +961,7 @@ export class DatabaseStorage implements IStorage {
           userId: buyerId,
           type: "giftcard_purchased",
           title: "Carte cadeau achetée",
-          message: `Vous avez acheté une carte cadeau de ${purchaseAmount.toFixed(2)}€ avec ${cashbackAmount.toFixed(2)}€ de cashback (15%)`,
+          message: `Vous avez acheté une carte cadeau de ${purchaseAmount.toFixed(2)}€`,
           isRead: false,
           metadata: JSON.stringify({ purchaseId: purchase.id, balanceId: balance.id }),
         })

@@ -167,13 +167,12 @@ export function GiftCardSection() {
           Acheter une Carte Cadeau
         </h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Achetez une carte cadeau et recevez 15% de CashBack !
+          Achetez une carte cadeau et offrez-la a vos proches !
         </p>
 
         {giftCards && giftCards.length > 0 ? (
           <div className="grid gap-4">
             {giftCards.map((card) => {
-              const cashbackAmount = parseFloat(card.faceValue) * parseFloat(card.cashbackRate) / 100;
               return (
                 <Card key={card.id} className="overflow-hidden hover-elevate">
                   <CardContent className="p-4">
@@ -185,13 +184,6 @@ export function GiftCardSection() {
                         )}
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-2xl font-bold">{parseFloat(card.faceValue).toFixed(2)} EUR</span>
-                          <Badge 
-                            variant="secondary" 
-                            className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            style={{ padding: "2px 8px", fontSize: "11px" }}
-                          >
-                            +{cashbackAmount.toFixed(2)} EUR CashBack
-                          </Badge>
                         </div>
                       </div>
                       <Button
@@ -227,7 +219,7 @@ export function GiftCardSection() {
           <DialogHeader>
             <DialogTitle>Confirmer l'achat</DialogTitle>
             <DialogDescription>
-              Vous allez acheter une carte cadeau avec 15% de CashBack.
+              Vous allez acheter une carte cadeau a offrir.
             </DialogDescription>
           </DialogHeader>
           {selectedCard && (
@@ -237,16 +229,9 @@ export function GiftCardSection() {
                 <div className="text-3xl font-bold text-primary mt-2">
                   {parseFloat(selectedCard.faceValue).toFixed(2)} EUR
                 </div>
-                <Badge 
-                  variant="secondary" 
-                  className="mt-2 bg-green-100 text-green-700"
-                  style={{ padding: "4px 12px", fontSize: "13px" }}
-                >
-                  +{(parseFloat(selectedCard.faceValue) * 0.15).toFixed(2)} EUR CashBack
-                </Badge>
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                Le CashBack sera disponible apres 7 jours ouvrables.
+                Vous pourrez offrir cette carte apres 7 jours ouvrables.
               </p>
             </div>
           )}
