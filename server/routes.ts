@@ -21,6 +21,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user profile (date of birth for clients)
+  app.patch('/api/auth/user/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const profileSchema = z.object({
+        dateOfBirth: z.string().refine((val) => {
+          const date = new Date(val);
+          return !isNaN(date.getTime());
+        }, { message: "Invalid date format" }),
+      });
+
+      const parsed = profileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+      }
+
+      const updated = await storage.updateUser(userId, {
+        dateOfBirth: new Date(parsed.data.dateOfBirth),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // Merchants API
   app.get('/api/merchants', async (req, res) => {
     try {

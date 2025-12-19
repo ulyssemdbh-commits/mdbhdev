@@ -12,11 +12,13 @@ import { MerchantFilters } from "@/components/client/MerchantFilters";
 import { BottomNavigation, type ClientTab } from "@/components/client/BottomNavigation";
 import { CashbackTransfer } from "@/components/client/CashbackTransfer";
 import { GiftCardSection } from "@/components/client/GiftCardSection";
+import { ProfileCompletion } from "@/components/client/ProfileCompletion";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Tag, Store, Calendar, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { queryClient } from "@/lib/queryClient";
 import type { User, Merchant as APIMerchant, CashbackBalance, Promotion } from "@shared/schema";
 
 const fadeInUp = {
@@ -166,6 +168,19 @@ export default function ClientDashboard() {
   const clientRevId = typedUser?.revId || "REVid-000000";
 
   const isLoading = merchantsLoading || balancesLoading || transactionsLoading || promotionsLoading;
+
+  // Check if client needs to complete profile (date of birth is required)
+  const needsProfileCompletion = typedUser?.role === "client" && !typedUser?.dateOfBirth;
+
+  if (needsProfileCompletion) {
+    return (
+      <ProfileCompletion
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
