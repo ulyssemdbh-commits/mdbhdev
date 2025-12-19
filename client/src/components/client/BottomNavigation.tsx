@@ -25,11 +25,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors ${
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover-elevate"
-              }`}
+              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors text-muted-foreground hover-elevate bg-[#f5f5f5]"
               data-testid={`nav-tab-${tab.id}`}
             >
               <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
