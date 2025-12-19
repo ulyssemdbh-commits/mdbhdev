@@ -1698,6 +1698,253 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== USER FAVORITES ====================
+
+  // Get user favorites
+  app.get('/api/favorites', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const favorites = await storage.getUserFavorites(userId);
+      res.json(favorites);
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+      res.status(500).json({ message: "Failed to fetch favorites" });
+    }
+  });
+
+  // Add favorite - validate merchantId exists, idempotent (returns 200 if already exists)
+  app.post('/api/favorites/:merchantId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchantId = req.params.merchantId;
+      
+      if (!merchantId || typeof merchantId !== 'string' || merchantId.length < 1) {
+        return res.status(400).json({ message: "Invalid merchant ID" });
+      }
+      
+      const merchant = await storage.getMerchant(merchantId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      
+      const favorite = await storage.addUserFavorite(userId, merchantId);
+      res.status(200).json(favorite);
+    } catch (error) {
+      console.error("Error adding favorite:", error);
+      res.status(500).json({ message: "Failed to add favorite" });
+    }
+  });
+
+  // Remove favorite
+  app.delete('/api/favorites/:merchantId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchantId = req.params.merchantId;
+      
+      if (!merchantId || typeof merchantId !== 'string') {
+        return res.status(400).json({ message: "Invalid merchant ID" });
+      }
+      
+      await storage.removeUserFavorite(userId, merchantId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+      res.status(500).json({ message: "Failed to remove favorite" });
+    }
+  });
+
+  // ==================== MERCHANT ANALYTICS ====================
+
+  // Get merchant analytics
+  app.get('/api/merchant/analytics', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      const analytics = await storage.getMerchantAnalytics(merchant.id);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching merchant analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Get promotion performance
+  app.get('/api/merchant/promotions/:id/performance', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      const performance = await storage.getPromotionPerformance(req.params.id);
+      res.json(performance);
+    } catch (error) {
+      console.error("Error fetching promotion performance:", error);
+      res.status(500).json({ message: "Failed to fetch performance" });
+    }
+  });
+
+  // Get merchant goal
+  app.get('/api/merchant/goals/:month/:year', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      const goal = await storage.getMerchantGoal(
+        merchant.id, 
+        parseInt(req.params.month), 
+        parseInt(req.params.year)
+      );
+      res.json(goal || null);
+    } catch (error) {
+      console.error("Error fetching merchant goal:", error);
+      res.status(500).json({ message: "Failed to fetch goal" });
+    }
+  });
+
+  // Set merchant goal
+  app.post('/api/merchant/goals', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      const { month, year, salesGoal } = req.body;
+      const goal = await storage.setMerchantGoal({
+        merchantId: merchant.id,
+        month: month.toString(),
+        year: year.toString(),
+        salesGoal: salesGoal.toString(),
+      });
+      res.status(201).json(goal);
+    } catch (error) {
+      console.error("Error setting merchant goal:", error);
+      res.status(500).json({ message: "Failed to set goal" });
+    }
+  });
+
+  // ==================== RECURRING PROMOTIONS ====================
+
+  // Get recurring promotions for merchant
+  app.get('/api/merchant/recurring-promotions', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      const promotions = await storage.getRecurringPromotionsByMerchant(merchant.id);
+      res.json(promotions);
+    } catch (error) {
+      console.error("Error fetching recurring promotions:", error);
+      res.status(500).json({ message: "Failed to fetch recurring promotions" });
+    }
+  });
+
+  // Create recurring promotion
+  app.post('/api/merchant/recurring-promotions', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const merchant = await storage.getMerchantByUserId(userId);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+      const promotion = await storage.createRecurringPromotion({
+        ...req.body,
+        merchantId: merchant.id,
+      });
+      res.status(201).json(promotion);
+    } catch (error) {
+      console.error("Error creating recurring promotion:", error);
+      res.status(500).json({ message: "Failed to create recurring promotion" });
+    }
+  });
+
+  // Update recurring promotion
+  app.patch('/api/merchant/recurring-promotions/:id', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      const promotion = await storage.updateRecurringPromotion(req.params.id, req.body);
+      res.json(promotion);
+    } catch (error) {
+      console.error("Error updating recurring promotion:", error);
+      res.status(500).json({ message: "Failed to update recurring promotion" });
+    }
+  });
+
+  // Delete recurring promotion
+  app.delete('/api/merchant/recurring-promotions/:id', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
+    try {
+      await storage.deleteRecurringPromotion(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting recurring promotion:", error);
+      res.status(500).json({ message: "Failed to delete recurring promotion" });
+    }
+  });
+
+  // ==================== ADMIN KPIs & ANALYTICS ====================
+
+  // Get admin KPIs
+  app.get('/api/admin/kpis', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const kpis = await storage.getAdminKPIs();
+      res.json(kpis);
+    } catch (error) {
+      console.error("Error fetching admin KPIs:", error);
+      res.status(500).json({ message: "Failed to fetch KPIs" });
+    }
+  });
+
+  // Get suspicious transfers
+  app.get('/api/admin/suspicious-transfers', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const transfers = await storage.getSuspiciousTransfers();
+      res.json(transfers);
+    } catch (error) {
+      console.error("Error fetching suspicious transfers:", error);
+      res.status(500).json({ message: "Failed to fetch suspicious transfers" });
+    }
+  });
+
+  // Get merchant compliance status
+  app.get('/api/admin/compliance', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const compliance = await storage.getMerchantComplianceStatus();
+      res.json(compliance);
+    } catch (error) {
+      console.error("Error fetching compliance status:", error);
+      res.status(500).json({ message: "Failed to fetch compliance status" });
+    }
+  });
+
+  // Get audit logs
+  app.get('/api/admin/audit-logs', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const logs = await storage.getAuditLogs(limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // ==================== CASHBACK ENTRIES (for unlock countdown) ====================
+
+  // Get pending cashback entries with unlock dates
+  app.get('/api/cashback/pending-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entries = await storage.getCashbackEntriesByUser(userId);
+      const pendingEntries = entries.filter(e => e.status === 'pending');
+      res.json(pendingEntries);
+    } catch (error) {
+      console.error("Error fetching pending entries:", error);
+      res.status(500).json({ message: "Failed to fetch pending entries" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

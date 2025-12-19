@@ -3,8 +3,10 @@ import { ArrowLeft, Download, TrendingUp, Users, ShoppingCart, Wallet, Calendar,
 import { Header } from "@/components/shared/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { MerchantAnalytics } from "@/components/merchant/MerchantAnalytics";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Transaction, Merchant } from "@shared/schema";

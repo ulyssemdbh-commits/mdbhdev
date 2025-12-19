@@ -13,6 +13,10 @@ import {
   giftCardPurchases,
   giftCardBalances,
   giftCardTransfers,
+  userFavorites,
+  auditLogs,
+  recurringPromotions,
+  merchantGoals,
   generateRevId,
   type User,
   type UpsertUser,
@@ -42,6 +46,14 @@ import {
   type InsertGiftCardBalance,
   type GiftCardTransfer,
   type InsertGiftCardTransfer,
+  type UserFavorite,
+  type InsertUserFavorite,
+  type AuditLog,
+  type InsertAuditLog,
+  type RecurringPromotion,
+  type InsertRecurringPromotion,
+  type MerchantGoal,
+  type InsertMerchantGoal,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
@@ -181,6 +193,70 @@ export interface IStorage {
     toRevId: string,
     balanceId: string
   ): Promise<{ transfer: GiftCardTransfer; newBalance: GiftCardBalance; notifications: Notification[] }>;
+  
+  // User favorites operations
+  getUserFavorites(userId: string): Promise<UserFavorite[]>;
+  addUserFavorite(userId: string, merchantId: string): Promise<UserFavorite>;
+  removeUserFavorite(userId: string, merchantId: string): Promise<boolean>;
+  
+  // Audit log operations
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(limit?: number): Promise<AuditLog[]>;
+  
+  // Recurring promotions operations
+  getRecurringPromotionsByMerchant(merchantId: string): Promise<RecurringPromotion[]>;
+  createRecurringPromotion(promotion: InsertRecurringPromotion): Promise<RecurringPromotion>;
+  updateRecurringPromotion(id: string, data: Partial<InsertRecurringPromotion>): Promise<RecurringPromotion | undefined>;
+  deleteRecurringPromotion(id: string): Promise<boolean>;
+  
+  // Merchant goals operations
+  getMerchantGoal(merchantId: string, month: number, year: number): Promise<MerchantGoal | undefined>;
+  setMerchantGoal(goal: InsertMerchantGoal): Promise<MerchantGoal>;
+  
+  // Analytics operations
+  getMerchantAnalytics(merchantId: string): Promise<{
+    totalSales: number;
+    totalTransactions: number;
+    totalCashback: number;
+    uniqueClients: number;
+    loyalClients: { clientId: string; visits: number; totalSpent: number }[];
+    salesByMonth: { month: string; sales: number }[];
+  }>;
+  
+  getPromotionPerformance(promotionId: string): Promise<{
+    views: number;
+    transactions: number;
+    revenue: number;
+  }>;
+  
+  getAdminKPIs(): Promise<{
+    totalGMV: number;
+    totalRevenue: number;
+    totalUsers: number;
+    activeUsers: number;
+    avgRevenuePerUser: number;
+    userGrowth: number;
+    transactionGrowth: number;
+  }>;
+  
+  getSuspiciousTransfers(): Promise<{
+    id: string;
+    fromUserId: string;
+    toUserId: string;
+    amount: number;
+    reason: string;
+    createdAt: Date;
+  }[]>;
+  
+  getMerchantComplianceStatus(): Promise<{
+    merchantId: string;
+    merchantName: string;
+    hasSiret: boolean;
+    hasIban: boolean;
+    hasEmail: boolean;
+    hasPhone: boolean;
+    isComplete: boolean;
+  }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -970,6 +1046,280 @@ export class DatabaseStorage implements IStorage {
       
       return { transfer, newBalance, notifications: [senderNotification, recipientNotification] };
     });
+  }
+
+  // User favorites operations
+  async getUserFavorites(userId: string): Promise<UserFavorite[]> {
+    return db.select().from(userFavorites).where(eq(userFavorites.userId, userId));
+  }
+
+  async addUserFavorite(userId: string, merchantId: string): Promise<UserFavorite> {
+    const [favorite] = await db
+      .insert(userFavorites)
+      .values({ userId, merchantId })
+      .onConflictDoNothing()
+      .returning();
+    
+    if (!favorite) {
+      const [existing] = await db.select().from(userFavorites)
+        .where(and(eq(userFavorites.userId, userId), eq(userFavorites.merchantId, merchantId)));
+      return existing;
+    }
+    return favorite;
+  }
+
+  async removeUserFavorite(userId: string, merchantId: string): Promise<boolean> {
+    await db.delete(userFavorites)
+      .where(and(eq(userFavorites.userId, userId), eq(userFavorites.merchantId, merchantId)));
+    return true;
+  }
+
+  // Audit log operations
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [created] = await db.insert(auditLogs).values(log).returning();
+    return created;
+  }
+
+  async getAuditLogs(limit: number = 100): Promise<AuditLog[]> {
+    return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit);
+  }
+
+  // Recurring promotions operations
+  async getRecurringPromotionsByMerchant(merchantId: string): Promise<RecurringPromotion[]> {
+    return db.select().from(recurringPromotions).where(eq(recurringPromotions.merchantId, merchantId));
+  }
+
+  async createRecurringPromotion(promotion: InsertRecurringPromotion): Promise<RecurringPromotion> {
+    const [created] = await db.insert(recurringPromotions).values(promotion).returning();
+    return created;
+  }
+
+  async updateRecurringPromotion(id: string, data: Partial<InsertRecurringPromotion>): Promise<RecurringPromotion | undefined> {
+    const [updated] = await db.update(recurringPromotions).set(data).where(eq(recurringPromotions.id, id)).returning();
+    return updated;
+  }
+
+  async deleteRecurringPromotion(id: string): Promise<boolean> {
+    await db.delete(recurringPromotions).where(eq(recurringPromotions.id, id));
+    return true;
+  }
+
+  // Merchant goals operations
+  async getMerchantGoal(merchantId: string, month: number, year: number): Promise<MerchantGoal | undefined> {
+    const [goal] = await db.select().from(merchantGoals)
+      .where(and(
+        eq(merchantGoals.merchantId, merchantId),
+        sql`${merchantGoals.month} = ${month}`,
+        sql`${merchantGoals.year} = ${year}`
+      ));
+    return goal;
+  }
+
+  async setMerchantGoal(goal: InsertMerchantGoal): Promise<MerchantGoal> {
+    const [created] = await db
+      .insert(merchantGoals)
+      .values(goal)
+      .onConflictDoUpdate({
+        target: [merchantGoals.merchantId, merchantGoals.month, merchantGoals.year],
+        set: { salesGoal: goal.salesGoal },
+      })
+      .returning();
+    return created;
+  }
+
+  // Analytics operations
+  async getMerchantAnalytics(merchantId: string): Promise<{
+    totalSales: number;
+    totalTransactions: number;
+    totalCashback: number;
+    uniqueClients: number;
+    loyalClients: { clientId: string; visits: number; totalSpent: number }[];
+    salesByMonth: { month: string; sales: number }[];
+  }> {
+    const merchantTx = await db.select().from(transactions).where(eq(transactions.merchantId, merchantId));
+    
+    const totalSales = merchantTx.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+    const totalTransactions = merchantTx.length;
+    const totalCashback = merchantTx.reduce((sum, tx) => sum + parseFloat(tx.cashbackAmount), 0);
+    
+    const clientMap = new Map<string, { visits: number; totalSpent: number }>();
+    merchantTx.forEach(tx => {
+      const existing = clientMap.get(tx.clientId) || { visits: 0, totalSpent: 0 };
+      clientMap.set(tx.clientId, {
+        visits: existing.visits + 1,
+        totalSpent: existing.totalSpent + parseFloat(tx.amount),
+      });
+    });
+    
+    const uniqueClients = clientMap.size;
+    const loyalClients = Array.from(clientMap.entries())
+      .filter(([_, data]) => data.visits >= 2)
+      .map(([clientId, data]) => ({ clientId, ...data }))
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 20);
+    
+    const salesByMonthMap = new Map<string, number>();
+    merchantTx.forEach(tx => {
+      const date = new Date(tx.createdAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      salesByMonthMap.set(key, (salesByMonthMap.get(key) || 0) + parseFloat(tx.amount));
+    });
+    
+    const salesByMonth = Array.from(salesByMonthMap.entries())
+      .map(([month, sales]) => ({ month, sales }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+    
+    return { totalSales, totalTransactions, totalCashback, uniqueClients, loyalClients, salesByMonth };
+  }
+
+  async getPromotionPerformance(promotionId: string): Promise<{
+    views: number;
+    transactions: number;
+    revenue: number;
+  }> {
+    // For now, we track transactions during the promotion period
+    const [promo] = await db.select().from(promotions).where(eq(promotions.id, promotionId));
+    if (!promo) return { views: 0, transactions: 0, revenue: 0 };
+    
+    const promoTransactions = await db.select().from(transactions)
+      .where(and(
+        eq(transactions.merchantId, promo.merchantId),
+        gte(transactions.createdAt, promo.startDate),
+        sql`${transactions.createdAt} <= ${promo.endDate}`
+      ));
+    
+    return {
+      views: promoTransactions.length * 5, // Estimated views
+      transactions: promoTransactions.length,
+      revenue: promoTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount), 0),
+    };
+  }
+
+  async getAdminKPIs(): Promise<{
+    totalGMV: number;
+    totalRevenue: number;
+    totalUsers: number;
+    activeUsers: number;
+    avgRevenuePerUser: number;
+    userGrowth: number;
+    transactionGrowth: number;
+  }> {
+    const allTx = await db.select().from(transactions);
+    const allUsers = await db.select().from(users);
+    
+    const totalGMV = allTx.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+    const totalRevenue = allTx.reduce((sum, tx) => sum + parseFloat(tx.commissionAmount), 0);
+    const totalUsers = allUsers.length;
+    
+    // Active users = those with transactions in last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentTx = allTx.filter(tx => new Date(tx.createdAt) >= thirtyDaysAgo);
+    const activeUserIds = new Set(recentTx.map(tx => tx.clientId));
+    const activeUsers = activeUserIds.size;
+    
+    const avgRevenuePerUser = totalUsers > 0 ? totalRevenue / totalUsers : 0;
+    
+    // Growth calculations (compare last 30 days to previous 30 days)
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const previousPeriodTx = allTx.filter(tx => {
+      const d = new Date(tx.createdAt);
+      return d >= sixtyDaysAgo && d < thirtyDaysAgo;
+    });
+    
+    const transactionGrowth = previousPeriodTx.length > 0 
+      ? ((recentTx.length - previousPeriodTx.length) / previousPeriodTx.length) * 100 
+      : 0;
+    
+    const recentUsers = allUsers.filter(u => u.createdAt && new Date(u.createdAt) >= thirtyDaysAgo).length;
+    const previousUsers = allUsers.filter(u => {
+      if (!u.createdAt) return false;
+      const d = new Date(u.createdAt);
+      return d >= sixtyDaysAgo && d < thirtyDaysAgo;
+    }).length;
+    const userGrowth = previousUsers > 0 ? ((recentUsers - previousUsers) / previousUsers) * 100 : 0;
+    
+    return { totalGMV, totalRevenue, totalUsers, activeUsers, avgRevenuePerUser, userGrowth, transactionGrowth };
+  }
+
+  async getSuspiciousTransfers(): Promise<{
+    id: string;
+    fromUserId: string;
+    toUserId: string;
+    amount: number;
+    reason: string;
+    createdAt: Date;
+  }[]> {
+    // Detect suspicious patterns: multiple transfers same day, high amounts, new accounts
+    const allTransfers = await db.select().from(cashbackTransfers).orderBy(desc(cashbackTransfers.createdAt));
+    const suspicious: any[] = [];
+    
+    // Group by user and date
+    const transfersByUserDate = new Map<string, typeof allTransfers>();
+    allTransfers.forEach(t => {
+      const key = `${t.fromUserId}-${new Date(t.createdAt).toDateString()}`;
+      const existing = transfersByUserDate.get(key) || [];
+      existing.push(t);
+      transfersByUserDate.set(key, existing);
+    });
+    
+    // Flag users with 3+ transfers same day
+    transfersByUserDate.forEach((transfers, key) => {
+      if (transfers.length >= 3) {
+        transfers.forEach(t => {
+          suspicious.push({
+            id: t.id,
+            fromUserId: t.fromUserId,
+            toUserId: t.toUserId,
+            amount: parseFloat(t.amount),
+            reason: `${transfers.length} transferts le meme jour`,
+            createdAt: new Date(t.createdAt),
+          });
+        });
+      }
+    });
+    
+    // Flag high-value transfers (>100€)
+    allTransfers.forEach(t => {
+      if (parseFloat(t.amount) > 100) {
+        if (!suspicious.find(s => s.id === t.id)) {
+          suspicious.push({
+            id: t.id,
+            fromUserId: t.fromUserId,
+            toUserId: t.toUserId,
+            amount: parseFloat(t.amount),
+            reason: "Montant eleve (>100€)",
+            createdAt: new Date(t.createdAt),
+          });
+        }
+      }
+    });
+    
+    return suspicious.slice(0, 50);
+  }
+
+  async getMerchantComplianceStatus(): Promise<{
+    merchantId: string;
+    merchantName: string;
+    hasSiret: boolean;
+    hasIban: boolean;
+    hasEmail: boolean;
+    hasPhone: boolean;
+    isComplete: boolean;
+  }[]> {
+    const allMerchants = await db.select().from(merchants);
+    return allMerchants.map(m => ({
+      merchantId: m.id,
+      merchantName: m.name,
+      hasSiret: !!m.siret && m.siret.length > 0,
+      hasIban: !!m.bankIban && m.bankIban.length > 0,
+      hasEmail: !!m.email && m.email.length > 0,
+      hasPhone: !!m.phone && m.phone.length > 0,
+      isComplete: !!(m.siret && m.bankIban && m.email && m.phone && 
+                    m.siret.length > 0 && m.bankIban.length > 0 && 
+                    m.email.length > 0 && m.phone.length > 0),
+    }));
   }
 }
 

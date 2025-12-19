@@ -15,9 +15,13 @@ import { EditMerchantDialog } from "@/components/admin/EditMerchantDialog";
 import { DeleteMerchantDialog } from "@/components/admin/DeleteMerchantDialog";
 import { MerchantDetailsDialog } from "@/components/admin/MerchantDetailsDialog";
 import { ClientsListDialog, MerchantsListDialog, TransactionsListDialog, CommissionsListDialog, CategoriesListDialog } from "@/components/admin/AdminDetailDialogs";
+import { AdminKPIs } from "@/components/admin/AdminKPIs";
+import { ComplianceTracker } from "@/components/admin/ComplianceTracker";
+import { FraudAlerts } from "@/components/admin/FraudAlerts";
+import { AuditLogViewer } from "@/components/admin/AuditLogViewer";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, LayoutDashboard, Store, Tag, Receipt, Megaphone, Gift } from "lucide-react";
+import { Loader2, LayoutDashboard, Store, Tag, Receipt, Megaphone, Gift, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -310,14 +314,14 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <Tabs defaultValue="dashboard" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="dashboard" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-dashboard">
                 <LayoutDashboard className="w-4 h-4" />
                 Tableau de bord
               </TabsTrigger>
               <TabsTrigger value="merchants" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-merchants">
                 <Store className="w-4 h-4" />
-                Commerçants
+                Commercants
               </TabsTrigger>
               <TabsTrigger value="bonsplans" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-bonsplans">
                 <Megaphone className="w-4 h-4" />
@@ -330,6 +334,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="facturation" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-facturation">
                 <Receipt className="w-4 h-4" />
                 Facturation
+              </TabsTrigger>
+              <TabsTrigger value="monitoring" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-monitoring">
+                <ShieldAlert className="w-4 h-4" />
+                Securite
               </TabsTrigger>
             </TabsList>
 
@@ -482,9 +490,9 @@ export default function AdminDashboard() {
 
             <TabsContent value="facturation" className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold">Facturation Commerçants</h3>
+                <h3 className="text-lg font-semibold">Facturation Commercants</h3>
                 <p className="text-sm text-muted-foreground">
-                  Factures générées automatiquement le 15 et le 30 de chaque mois
+                  Factures generees automatiquement le 15 et le 30 de chaque mois
                 </p>
               </div>
 
@@ -495,6 +503,24 @@ export default function AdminDashboard() {
                 onGenerateBillings={() => generateBillingsMutation.mutate()}
                 isGenerating={generateBillingsMutation.isPending}
               />
+            </TabsContent>
+
+            <TabsContent value="monitoring" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold">Securite et Conformite</h3>
+                <p className="text-sm text-muted-foreground">
+                  Surveillance des activites suspectes et conformite des commercants
+                </p>
+              </div>
+
+              <AdminKPIs />
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <FraudAlerts />
+                <ComplianceTracker />
+              </div>
+
+              <AuditLogViewer />
             </TabsContent>
           </Tabs>
         )}

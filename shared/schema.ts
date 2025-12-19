@@ -319,3 +319,84 @@ export const insertGiftCardTransferSchema = createInsertSchema(giftCardTransfers
 
 export type InsertGiftCardTransfer = z.infer<typeof insertGiftCardTransferSchema>;
 export type GiftCardTransfer = typeof giftCardTransfers.$inferSelect;
+
+// User favorite merchants
+export const userFavorites = pgTable("user_favorites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  merchantId: varchar("merchant_id").references(() => merchants.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("user_favorites_user_merchant_idx").on(table.userId, table.merchantId),
+]);
+
+export const insertUserFavoriteSchema = createInsertSchema(userFavorites).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUserFavorite = z.infer<typeof insertUserFavoriteSchema>;
+export type UserFavorite = typeof userFavorites.$inferSelect;
+
+// Audit log for admin tracking
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: varchar("entity_id"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+
+// Recurring promotions (automatic promotions)
+export const recurringPromotions = pgTable("recurring_promotions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  merchantId: varchar("merchant_id").references(() => merchants.id).notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  cashbackBoostRate: decimal("cashback_boost_rate", { precision: 5, scale: 2 }),
+  freeArticle: text("free_article"),
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }),
+  daysOfWeek: text("days_of_week").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRecurringPromotionSchema = createInsertSchema(recurringPromotions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRecurringPromotion = z.infer<typeof insertRecurringPromotionSchema>;
+export type RecurringPromotion = typeof recurringPromotions.$inferSelect;
+
+// Merchant sales goals
+export const merchantGoals = pgTable("merchant_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  merchantId: varchar("merchant_id").references(() => merchants.id).notNull(),
+  month: decimal("month", { precision: 2, scale: 0 }).notNull(),
+  year: decimal("year", { precision: 4, scale: 0 }).notNull(),
+  salesGoal: decimal("sales_goal", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("merchant_goals_merchant_month_year_idx").on(table.merchantId, table.month, table.year),
+]);
+
+export const insertMerchantGoalSchema = createInsertSchema(merchantGoals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMerchantGoal = z.infer<typeof insertMerchantGoalSchema>;
+export type MerchantGoal = typeof merchantGoals.$inferSelect;
