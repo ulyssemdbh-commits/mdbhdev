@@ -55,7 +55,7 @@ export function TransactionList({ transactions, maxHeight = "400px" }: Transacti
   return (
     <Card className="border-card-border">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold">Historique</CardTitle>
+        <CardTitle className="font-semibold text-center text-[20px] text-[#d00000]">Mes derniers CashBack</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea style={{ height: maxHeight }} className="px-6 pb-6">
