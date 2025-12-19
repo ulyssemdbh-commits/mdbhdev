@@ -129,12 +129,12 @@ export function GiftCardSection() {
                         <div className="text-2xl font-bold text-primary">{parseFloat(balance.remainingValue).toFixed(2)} EUR</div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {balance.receivedFromUserId && (
-                            <Badge variant="secondary" className="text-xs" style={{ padding: "2px 8px", fontSize: "11px" }}>
+                            <Badge variant="secondary" className="text-xs">
                               Recu en cadeau
                             </Badge>
                           )}
                           {isLocked && unlocksAt && (
-                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-300" style={{ padding: "2px 8px", fontSize: "11px" }}>
+                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-700">
                               Disponible le {unlocksAt.toLocaleDateString("fr-FR")}
                             </Badge>
                           )}
@@ -142,9 +142,8 @@ export function GiftCardSection() {
                       </div>
                       <Button
                         onClick={() => openTransferDialog(balance)}
-                        variant="outline"
+                        variant="secondary"
                         className="flex items-center gap-2"
-                        style={{ backgroundColor: "#f5f5f5", color: "#000000" }}
                         disabled={isLocked}
                         data-testid={`button-transfer-giftcard-${balance.id}`}
                       >
@@ -191,7 +190,7 @@ export function GiftCardSection() {
                           setSelectedCard(card);
                           setPurchaseDialogOpen(true);
                         }}
-                        style={{ backgroundColor: "#f5f5f5", color: "#000000" }}
+                        variant="default"
                         data-testid={`button-buy-giftcard-${card.id}`}
                       >
                         Acheter

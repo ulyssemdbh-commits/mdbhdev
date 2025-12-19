@@ -1,5 +1,6 @@
 import QRCode from "react-qr-code";
 import { Card, CardContent } from "@/components/ui/card";
+import { QrCode } from "lucide-react";
 
 interface QRCodeDisplayProps {
   revId: string;
@@ -8,13 +9,16 @@ interface QRCodeDisplayProps {
 
 export function QRCodeDisplay({ revId, clientName }: QRCodeDisplayProps) {
   return (
-    <Card className="border-card-border">
+    <Card className="border-0 bg-gradient-to-br from-card to-muted/50 shadow-sm overflow-hidden">
       <CardContent className="flex flex-col items-center p-6 gap-4">
-        <p className="text-[18px] font-bold text-[#d00000]">QR-Code à présenter</p>
-        <div className="bg-white p-4 rounded-md">
+        <div className="flex items-center gap-2 text-primary">
+          <QrCode className="w-5 h-5" />
+          <p className="text-base font-semibold">QR-Code a presenter</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm">
           <QRCode
             value={revId}
-            size={200}
+            size={180}
             level="H"
             data-testid="qr-code-client"
           />
@@ -23,7 +27,7 @@ export function QRCodeDisplay({ revId, clientName }: QRCodeDisplayProps) {
           <p className="font-semibold text-lg" data-testid="text-client-name">
             {clientName}
           </p>
-          <p className="text-sm font-mono text-[#ffffff]" data-testid="text-rev-id">
+          <p className="text-sm font-mono text-muted-foreground bg-muted px-3 py-1 rounded-md" data-testid="text-rev-id">
             {revId}
           </p>
         </div>
