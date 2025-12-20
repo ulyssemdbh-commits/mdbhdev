@@ -214,7 +214,7 @@ export default function MerchantDashboard() {
 
             <Button
               variant="outline"
-              className="w-full gap-2"
+              className="w-full gap-2 bg-[#f5f5f5] text-[#000000] font-bold text-[20px]"
               onClick={() => setView("billings")}
               data-testid="button-view-billings"
             >
@@ -224,7 +224,7 @@ export default function MerchantDashboard() {
 
             <Button
               variant="outline"
-              className="w-full gap-2"
+              className="w-full gap-2 bg-[#f5f5f5] text-[#000000] font-bold text-[20px]"
               onClick={() => setView("promotions")}
               data-testid="button-view-promotions"
             >
