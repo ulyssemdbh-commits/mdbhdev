@@ -314,30 +314,36 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <Tabs defaultValue="dashboard" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="dashboard" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-dashboard">
-                <LayoutDashboard className="w-4 h-4" />
-                Tableau de bord
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 h-auto">
+              <TabsTrigger value="dashboard" className="gap-1 text-xs sm:text-sm py-2" data-testid="tab-dashboard">
+                <LayoutDashboard className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Tableau de bord</span>
+                <span className="sm:hidden">Accueil</span>
               </TabsTrigger>
-              <TabsTrigger value="merchants" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-merchants">
-                <Store className="w-4 h-4" />
-                Commercants
+              <TabsTrigger value="merchants" className="gap-1 text-xs sm:text-sm py-2" data-testid="tab-merchants">
+                <Store className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Commercants</span>
+                <span className="sm:hidden">Pros</span>
               </TabsTrigger>
-              <TabsTrigger value="bonsplans" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-bonsplans">
-                <Megaphone className="w-4 h-4" />
-                Bons Plans
+              <TabsTrigger value="bonsplans" className="gap-1 text-xs sm:text-sm py-2" data-testid="tab-bonsplans">
+                <Megaphone className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Bons Plans</span>
+                <span className="sm:hidden">Promos</span>
               </TabsTrigger>
-              <TabsTrigger value="giftcards" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-giftcards">
-                <Gift className="w-4 h-4" />
-                Cadeaux
+              <TabsTrigger value="giftcards" className="gap-1 text-xs sm:text-sm py-2" data-testid="tab-giftcards">
+                <Gift className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Cadeaux</span>
+                <span className="sm:hidden">Gifts</span>
               </TabsTrigger>
-              <TabsTrigger value="facturation" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-facturation">
-                <Receipt className="w-4 h-4" />
-                Facturation
+              <TabsTrigger value="facturation" className="gap-1 text-xs sm:text-sm py-2" data-testid="tab-facturation">
+                <Receipt className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Facturation</span>
+                <span className="sm:hidden">Factures</span>
               </TabsTrigger>
-              <TabsTrigger value="monitoring" className="gap-2 text-[#000000] bg-[#F5F5F5]" data-testid="tab-monitoring">
-                <ShieldAlert className="w-4 h-4" />
-                Securite
+              <TabsTrigger value="monitoring" className="gap-1 text-xs sm:text-sm py-2" data-testid="tab-monitoring">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Securite</span>
+                <span className="sm:hidden">Secu</span>
               </TabsTrigger>
             </TabsList>
 
