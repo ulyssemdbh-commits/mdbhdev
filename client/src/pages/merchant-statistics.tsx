@@ -275,7 +275,8 @@ export default function MerchantStatistics({ onBack, merchantProfile }: Merchant
         <div className="flex items-center gap-3">
           <Button
             size="icon"
-            variant="ghost"
+            variant="outline"
+            className="bg-[#f5f5f5] text-[#000000]"
             onClick={onBack}
             data-testid="button-back-dashboard"
           >
