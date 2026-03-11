@@ -1935,7 +1935,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/audit-report-pdf', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
       const { jsPDF } = await import('jspdf');
-      await import('jspdf-autotable');
+      const autoTableModule = await import('jspdf-autotable');
+      const autoTable = autoTableModule.default || autoTableModule;
 
       const doc = new (jsPDF as any)({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -2199,7 +2200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ['sessions', 'Sessions d\'authentification persistantes'],
       ];
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: y,
         head: [['Table', 'Description']],
         body: dbTables,
@@ -2397,7 +2398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ['Revenu annuel projeté', '14 400 €', '72 000 €', '360 000 €'],
       ];
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: y,
         head: [projections[0]],
         body: projections.slice(1),
