@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, User, Loader2 } from "lucide-react";
+import { CalendarIcon, User, Loader2, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -108,6 +108,18 @@ export function ProfileCompletion({ onComplete }: ProfileCompletionProps) {
               ) : (
                 "Continuer"
               )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full gap-2 text-muted-foreground"
+              onClick={() => {
+                window.location.href = "/api/logout";
+              }}
+              data-testid="button-logout-profile"
+            >
+              <LogOut className="w-4 h-4" />
+              Se déconnecter
             </Button>
           </form>
         </CardContent>
