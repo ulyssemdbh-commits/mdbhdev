@@ -47,26 +47,13 @@ export default function AdminDashboard() {
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
 
-  const handleDownloadAuditReport = async () => {
+  const handleDownloadAuditReport = () => {
     setDownloadingReport(true);
-    try {
-      const response = await fetch('/api/admin/audit-report-pdf', { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to download report');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `REV_Rapport_Audit_${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast({ title: "Rapport téléchargé", description: "Le rapport d'audit a été généré avec succès." });
-    } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de générer le rapport.", variant: "destructive" });
-    } finally {
+    window.open('/api/admin/audit-report-pdf', '_blank');
+    setTimeout(() => {
       setDownloadingReport(false);
-    }
+      toast({ title: "Rapport généré", description: "Le PDF s'ouvre dans un nouvel onglet. Vous pouvez le télécharger depuis là." });
+    }, 2000);
   };
 
   const handleStatCardClick = (type: AdminStatType) => {
