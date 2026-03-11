@@ -2110,7 +2110,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { num: '5', title: 'Points négatifs & axes d\'amélioration', page: '8' },
         { num: '6', title: 'Développements futurs planifiés', page: '9' },
         { num: '7', title: 'Analyse du modèle économique', page: '10' },
-        { num: '8', title: 'Avis général & recommandations', page: '11' },
+        { num: '8', title: 'Conformité, protection des données & enjeux financiers', page: '11' },
+        { num: '9', title: 'Avis général & recommandations', page: '12' },
       ];
 
       for (const item of sommaire) {
@@ -2412,10 +2413,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       addParagraph("Ces projections sont conservatrices et supposent un panier moyen de 20€ par transaction. Le modèle est scalable : chaque nouveau commerçant attire ses propres clients dans le réseau, créant un effet de réseau vertueux.");
 
-      // ===== 8. AVIS GÉNÉRAL =====
+      // ===== 8. CONFORMITÉ & PROTECTION DES DONNÉES =====
       doc.addPage();
       y = 25;
-      addSectionTitle('AVIS GÉNÉRAL & RECOMMANDATIONS', '8');
+      addSectionTitle('CONFORMITÉ, PROTECTION DES DONNÉES & ENJEUX FINANCIERS', '8');
+
+      addSubTitle('Données personnelles collectées');
+      addParagraph("La plateforme REV collecte et traite les données personnelles suivantes, soumises au Règlement Général sur la Protection des Données (RGPD - Règlement UE 2016/679) :");
+      addBullet("Clients : nom, prénom, email, date de naissance, identifiant unique REVid, historique complet des achats et du cashback, commerçants favoris");
+      addBullet("Commerçants : nom commercial, SIRET, IBAN/BIC, adresse, téléphone, email, nom du contact, historique des transactions et facturations");
+      addBullet("Données techniques : adresses IP (journal d'audit), sessions d'authentification, horodatage de toutes les actions");
+
+      addSubTitle('Obligations RGPD — État actuel & actions requises');
+      addBullet("Politique de confidentialité — À rédiger et intégrer dans l'application. Doit détailler la nature des données collectées, les finalités du traitement, la durée de conservation et les droits des utilisateurs.", '!', colors.orange);
+      addBullet("Consentement explicite — Implémenter un formulaire de consentement (case à cocher non pré-cochée) lors de l'inscription, conforme à l'article 7 du RGPD.", '!', colors.orange);
+      addBullet("Droit à l'effacement (article 17) — Prévoir une fonctionnalité permettant aux utilisateurs de demander la suppression complète de leurs données personnelles.", '!', colors.orange);
+      addBullet("Droit à la portabilité (article 20) — Permettre l'export des données personnelles dans un format structuré (CSV/JSON).", '!', colors.orange);
+      addBullet("Registre des traitements (article 30) — Documenter formellement tous les traitements de données effectués par la plateforme.", '!', colors.orange);
+      addBullet("Durée de conservation — Définir et appliquer des durées de conservation pour chaque type de données (recommandation : 3 ans pour les transactions, 1 an pour les logs d'audit, suppression après résiliation pour les données personnelles).", '!', colors.orange);
+      addBullet("DPO (Délégué à la Protection des Données) — À évaluer selon le volume d'utilisateurs. Obligatoire si traitement à grande échelle.", '!', colors.orange);
+
+      addSubTitle('Sécurité des données financières');
+      addBullet("IBAN/BIC des commerçants — Actuellement stockés en clair dans la base de données. Recommandation : chiffrer ces données sensibles (AES-256) et restreindre l'accès en lecture.", '!', colors.orange);
+      addBullet("PCI-DSS — Les paiements par carte sont intégralement délégués à Stripe et PayPal. REV ne traite, stocke ni transmet aucune donnée de carte bancaire. Cette architecture est conforme aux exigences PCI-DSS (niveau SAQ-A).", '✓', colors.green);
+      addBullet("Authentification — Déléguée à un fournisseur OIDC certifié avec refresh automatique des tokens et sessions sécurisées (httpOnly, secure). Conforme aux bonnes pratiques.", '✓', colors.green);
+      addBullet("Chiffrement en transit — Toutes les communications sont chiffrées via HTTPS/TLS.", '✓', colors.green);
+
+      addSubTitle('Obligations réglementaires complémentaires');
+      addBullet("CGU/CGV — Conditions Générales d'Utilisation et de Vente à rédiger. Doivent couvrir : les conditions du cashback, les délais de déblocage (7 jours), les conditions de transfert, les responsabilités de chaque partie.", '!', colors.orange);
+      addBullet("KYC (Know Your Customer) — Si les volumes de transactions dépassent certains seuils réglementaires, des obligations de vérification d'identité pourraient s'appliquer (directive anti-blanchiment). À surveiller selon la croissance.", '!', colors.orange);
+      addBullet("Facturation électronique — Les factures générées respectent les mentions obligatoires françaises (TVA, dates, montants). Vérifier la conformité avec la réforme de la facturation électronique 2026.", '!', colors.orange);
+
+      addSubTitle('Valeur stratégique des données collectées');
+      addParagraph("Au-delà des obligations réglementaires, les données collectées par REV constituent un actif stratégique majeur :");
+      addBullet("Connaissance client — Habitudes d'achat, fréquence de visite, panier moyen par commerçant, heures de pointe. Ces données, anonymisées et agrégées, peuvent être proposées aux commerçants sous forme de rapports premium.");
+      addBullet("Indicateurs de fidélisation — Taux de rétention, fréquence d'utilisation du cashback, taux de conversion des promotions. Ces métriques prouvent l'efficacité de la plateforme aux commerçants partenaires.");
+      addBullet("Tendances de consommation locale — Données agrégées sur les secteurs d'activité les plus dynamiques, les zones géographiques les plus actives. Valorisables auprès des CCI et collectivités locales.");
+      addBullet("Effet réseau mesurable — Les transferts de cashback et de cartes cadeaux entre utilisateurs documentent la viralité organique du réseau, un indicateur clé pour les investisseurs.");
+
+      addSubTitle('Feuille de route conformité recommandée');
+      addBullet("Immédiat (avant lancement commercial) : rédaction de la politique de confidentialité, des CGU/CGV, et du formulaire de consentement");
+      addBullet("Court terme (0-3 mois) : chiffrement des IBAN, implémentation du droit à l'effacement, registre des traitements");
+      addBullet("Moyen terme (3-6 mois) : audit de sécurité externe, évaluation DPO, portabilité des données");
+      addBullet("Long terme (6-12 mois) : certification ISO 27001 ou SOC 2 selon ambitions de croissance");
+
+      // ===== 9. AVIS GÉNÉRAL =====
+      doc.addPage();
+      y = 25;
+      addSectionTitle('AVIS GÉNÉRAL & RECOMMANDATIONS', '9');
 
       addSubTitle('Niveau de maturité du projet');
       addParagraph("REV se situe au stade de MVP (Minimum Viable Product) avancé. L'ensemble des fonctionnalités critiques pour un lancement commercial sont opérationnelles : gestion des transactions, calcul et distribution du cashback, paiements en ligne, administration de la plateforme, et tableau de bord commerçant.");
