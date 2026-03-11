@@ -109,6 +109,7 @@ export interface IStorage {
   getAllTransactions(): Promise<Transaction[]>;
   getAllMerchantsWithStats(): Promise<any[]>;
   getAllMerchantsForAdmin(): Promise<Merchant[]>;
+  getAllUsers(): Promise<User[]>;
   getAllClients(): Promise<User[]>;
   getAllMerchantUsers(): Promise<User[]>;
   
@@ -532,6 +533,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAllMerchantsForAdmin(): Promise<Merchant[]> {
     return db.select().from(merchants).orderBy(desc(merchants.createdAt));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
   }
 
   async getAllClients(): Promise<User[]> {

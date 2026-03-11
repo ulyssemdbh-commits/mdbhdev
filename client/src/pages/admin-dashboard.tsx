@@ -21,7 +21,7 @@ import { FraudAlerts } from "@/components/admin/FraudAlerts";
 import { AuditLogViewer } from "@/components/admin/AuditLogViewer";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, LayoutDashboard, Store, Tag, Receipt, Megaphone, Gift, ShieldAlert } from "lucide-react";
+import { Loader2, LayoutDashboard, Store, Tag, Receipt, Megaphone, Gift, ShieldAlert, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,6 +45,29 @@ export default function AdminDashboard() {
   const [viewingMerchantId, setViewingMerchantId] = useState<string | null>(null);
   const [activeDetailDialog, setActiveDetailDialog] = useState<AdminStatType | null>(null);
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  const handleDownloadAuditReport = async () => {
+    setDownloadingReport(true);
+    try {
+      const response = await fetch('/api/admin/audit-report-pdf', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to download report');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `REV_Rapport_Audit_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast({ title: "Rapport téléchargé", description: "Le rapport d'audit a été généré avec succès." });
+    } catch (error) {
+      toast({ title: "Erreur", description: "Impossible de générer le rapport.", variant: "destructive" });
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
 
   const handleStatCardClick = (type: AdminStatType) => {
     setActiveDetailDialog(type);
@@ -348,6 +371,29 @@ export default function AdminDashboard() {
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Vue d'ensemble</h2>
+                  <p className="text-sm text-muted-foreground">Tableau de bord administrateur</p>
+                </div>
+                <Button
+                  onClick={handleDownloadAuditReport}
+                  disabled={downloadingReport}
+                  variant="outline"
+                  className="gap-2"
+                  data-testid="button-download-audit-report"
+                >
+                  {downloadingReport ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">Rapport d'audit REV</span>
+                  <span className="sm:hidden">Audit PDF</span>
+                  <Download className="w-3 h-3" />
+                </Button>
+              </div>
+
               <AdminStats
                 totalTransactions={stats.totalTransactions}
                 totalMerchants={stats.totalMerchants}
