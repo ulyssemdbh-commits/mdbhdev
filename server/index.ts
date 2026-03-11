@@ -5,6 +5,10 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { initializeSocket } from "./socket";
 
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required");
+}
+
 const app = express();
 
 app.use(helmet({

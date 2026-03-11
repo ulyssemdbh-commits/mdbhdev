@@ -1,69 +1,98 @@
 import { useState } from "react";
-import { MapPin, LogIn, Eye, EyeOff, Scan } from "lucide-react";
+import { MapPin, LogIn, Eye, EyeOff, UserPlus, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+type AuthMode = "login" | "register";
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState("");
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleLogin = () => {
-    window.location.href = "/api/login";
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setFirstName("");
+    setLastName("");
+    setShowPassword(false);
   };
 
-  const handleCredentialsLogin = async (e: React.FormEvent) => {
+  const switchMode = (newMode: AuthMode) => {
+    resetForm();
+    setMode(newMode);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!identifier.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer votre identifiant",
-        variant: "destructive",
-      });
+
+    if (!email.trim()) {
+      toast({ title: "Erreur", description: "Veuillez entrer votre email", variant: "destructive" });
       return;
     }
-
     if (password.length < 8) {
-      toast({
-        title: "Erreur",
-        description: "Le mot de passe doit contenir au moins 8 caractères",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins 8 caractères", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
-    
-    // For now, redirect to Replit auth as the main authentication method
-    // In a production app, this would call a credentials-based auth endpoint
-    toast({
-      title: "Connexion",
-      description: "Redirection vers l'authentification...",
-    });
-    
-    setTimeout(() => {
-      handleLogin();
-    }, 500);
+    try {
+      await apiRequest("POST", "/api/auth/login", { email: email.trim(), password });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      window.location.href = "/";
+    } catch (error: any) {
+      const message = error?.message || "Email ou mot de passe incorrect";
+      toast({ title: "Connexion échouée", description: message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFaceIDLogin = () => {
-    toast({
-      title: "Face ID",
-      description: "Authentification biométrique en cours...",
-    });
-    
-    // Simulate Face ID auth, then redirect to main auth
-    setTimeout(() => {
-      handleLogin();
-    }, 1000);
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email.trim()) {
+      toast({ title: "Erreur", description: "Veuillez entrer votre email", variant: "destructive" });
+      return;
+    }
+    if (password.length < 8) {
+      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins 8 caractères", variant: "destructive" });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas", variant: "destructive" });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/register", {
+        email: email.trim(),
+        password,
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Compte créé", description: "Bienvenue sur REV !" });
+      window.location.href = "/";
+    } catch (error: any) {
+      const message = error?.message || "Impossible de créer le compte";
+      toast({ title: "Inscription échouée", description: message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -80,107 +109,227 @@ export default function LoginPage() {
 
       <main className="container max-w-md px-4 py-8 space-y-6">
         <section className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Connexion</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-auth-title">
+            {mode === "login" ? "Connexion" : "Créer un compte"}
+          </h1>
           <p className="text-muted-foreground">
-            Connectez-vous pour accéder à votre espace
+            {mode === "login"
+              ? "Connectez-vous pour accéder à votre espace"
+              : "Rejoignez le réseau REV et gagnez du cashback"}
           </p>
         </section>
 
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Identifiants</CardTitle>
-            <CardDescription>
-              Entrez vos identifiants pour vous connecter
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCredentialsLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="identifier">Identifiant</Label>
-                <Input
-                  id="identifier"
-                  type="text"
-                  placeholder="Votre identifiant ou email"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  data-testid="input-identifier"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Mot de passe</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="8 caractères minimum"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10"
-                    data-testid="input-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    data-testid="button-toggle-password"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Minimum 8 caractères
-                </p>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full gap-2"
-                size="lg"
-                disabled={isLoading}
-                data-testid="button-login-credentials"
-              >
+        {mode === "login" ? (
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
                 <LogIn className="w-5 h-5" />
-                {isLoading ? "Connexion..." : "Se connecter"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                Identifiants
+              </CardTitle>
+              <CardDescription>
+                Entrez votre email et mot de passe
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    data-testid="input-email"
+                  />
+                </div>
 
-        <div className="flex items-center gap-4">
-          <Separator className="flex-1" />
-          <span className="text-sm text-muted-foreground">ou</span>
-          <Separator className="flex-1" />
-        </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Votre mot de passe"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pr-10"
+                      autoComplete="current-password"
+                      data-testid="input-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      data-testid="button-toggle-password"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              size="lg"
-              onClick={handleFaceIDLogin}
-              data-testid="button-login-faceid"
-            >
-              <Scan className="w-5 h-5" />
-              Connexion Face ID
-            </Button>
-          </CardContent>
-        </Card>
+                <Button
+                  type="submit"
+                  className="w-full gap-2"
+                  size="lg"
+                  disabled={isLoading}
+                  data-testid="button-login"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <LogIn className="w-5 h-5" />
+                  )}
+                  {isLoading ? "Connexion..." : "Se connecter"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => switchMode("login")}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-back-to-login"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <UserPlus className="w-5 h-5" />
+                    Inscription
+                  </CardTitle>
+                  <CardDescription>
+                    Créez votre compte REV gratuitement
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Prénom</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="Jean"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      autoComplete="given-name"
+                      data-testid="input-firstname"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Nom</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Dupont"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      autoComplete="family-name"
+                      data-testid="input-lastname"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reg-email">Email</Label>
+                  <Input
+                    id="reg-email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    data-testid="input-register-email"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reg-password">Mot de passe</Label>
+                  <div className="relative">
+                    <Input
+                      id="reg-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Minimum 8 caractères"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pr-10"
+                      autoComplete="new-password"
+                      data-testid="input-register-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Retapez votre mot de passe"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                    data-testid="input-confirm-password"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full gap-2"
+                  size="lg"
+                  disabled={isLoading}
+                  data-testid="button-register"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <UserPlus className="w-5 h-5" />
+                  )}
+                  {isLoading ? "Création..." : "Créer mon compte"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         <p className="text-center text-sm text-muted-foreground">
-          Pas encore de compte ?{" "}
-          <button
-            onClick={handleLogin}
-            className="text-primary font-medium"
-            data-testid="link-signup"
-          >
-            Inscrivez-vous gratuitement
-          </button>
+          {mode === "login" ? (
+            <>
+              Pas encore de compte ?{" "}
+              <button
+                onClick={() => switchMode("register")}
+                className="text-primary font-medium hover:underline"
+                data-testid="link-switch-to-register"
+              >
+                Inscrivez-vous gratuitement
+              </button>
+            </>
+          ) : (
+            <>
+              Déjà un compte ?{" "}
+              <button
+                onClick={() => switchMode("login")}
+                className="text-primary font-medium hover:underline"
+                data-testid="link-switch-to-login"
+              >
+                Connectez-vous
+              </button>
+            </>
+          )}
         </p>
       </main>
     </div>

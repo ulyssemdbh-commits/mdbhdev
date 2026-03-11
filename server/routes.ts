@@ -7,6 +7,16 @@ import { z } from "zod";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault, isPayPalConfigured } from "./paypal";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
+function toSafeUser(user: any) {
+  if (!user) return user;
+  const { password: _, ...safe } = user;
+  return safe;
+}
+
+function toSafeUsers(users: any[]) {
+  return users.map(toSafeUser);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   await setupAuth(app);
@@ -14,9 +24,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
-      res.json(user);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { password: _, ...safeUser } = user;
+      res.json(safeUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -26,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user profile (date of birth for clients)
   app.patch('/api/auth/user/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -49,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateOfBirth: new Date(parsed.data.dateOfBirth),
       });
 
-      res.json(updated);
+      res.json(toSafeUser(updated));
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
@@ -88,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/merchant/me', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant profile not found" });
@@ -103,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Transactions API
   app.get('/api/transactions/merchant', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant profile not found" });
@@ -118,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/transactions/client', isAuthenticated, requireRole('client', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const txs = await storage.getTransactionsByClient(userId);
       res.json(txs);
     } catch (error) {
@@ -141,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/transactions', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(403).json({ message: "Merchant profile not found" });
@@ -204,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/transactions/:id/cancel', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(403).json({ message: "Merchant profile not found" });
@@ -245,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get client cashback info for merchants
   app.get('/api/merchant/client/:clientId/cashback', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(403).json({ message: "Merchant profile not found" });
@@ -277,7 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Merchant billings API
   app.get('/api/merchant/billings', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(403).json({ message: "Merchant profile not found" });
@@ -294,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cashback API
   app.get('/api/cashback/balances', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const balances = await storage.getCashbackBalancesByUser(userId);
       res.json(balances);
     } catch (error) {
@@ -305,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/cashback/entries', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const entries = await storage.getCashbackEntriesByUser(userId);
       res.json(entries);
     } catch (error) {
@@ -329,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Use cashback at merchant
   app.post('/api/cashback/use', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const validation = useCashbackSchema.safeParse(req.body);
       if (!validation.success) {
@@ -410,7 +422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/cashback/transfer', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const fromUserId = req.user.claims.sub;
+      const fromUserId = req.user.id;
       
       const validation = transferCashbackSchema.safeParse(req.body);
       if (!validation.success) {
@@ -509,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/cashback/transfers', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const transfers = await storage.getCashbackTransfersByUser(userId);
       res.json(transfers);
     } catch (error) {
@@ -521,7 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notifications API
   app.get('/api/notifications', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const notifs = await storage.getNotificationsByUser(userId);
       res.json(notifs);
     } catch (error) {
@@ -532,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/notifications/unread-count', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const count = await storage.getUnreadNotificationCount(userId);
       res.json({ count });
     } catch (error) {
@@ -556,7 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/notifications/mark-all-read', isAuthenticated, requireRole('client', 'merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.markAllNotificationsAsRead(userId);
       res.json({ success: true });
     } catch (error) {
@@ -589,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get promotions for current merchant
   app.get('/api/merchant/promotions', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant profile not found" });
@@ -605,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a promotion (merchant only)
   app.post('/api/merchant/promotions', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant profile not found" });
@@ -643,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a promotion
   app.patch('/api/merchant/promotions/:id', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant profile not found" });
@@ -669,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete a promotion
   app.delete('/api/merchant/promotions/:id', isAuthenticated, requireRole('merchant', 'admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant profile not found" });
@@ -725,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/clients', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
       const clients = await storage.getAllClients();
-      res.json(clients);
+      res.json(toSafeUsers(clients));
     } catch (error) {
       console.error("Error fetching clients for admin:", error);
       res.status(500).json({ message: "Failed to fetch clients" });
@@ -736,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/merchant-users', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
       const merchantUsers = await storage.getAllMerchantUsers();
-      res.json(merchantUsers);
+      res.json(toSafeUsers(merchantUsers));
     } catch (error) {
       console.error("Error fetching merchant users for admin:", error);
       res.status(500).json({ message: "Failed to fetch merchant users" });
@@ -746,7 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin API - Update client
   app.patch('/api/admin/clients/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
 
       const targetUser = await storage.getUser(req.params.id);
       if (!targetUser) {
@@ -766,7 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       emitClientUpdate();
       emitStatsUpdate();
-      res.json(updated);
+      res.json(toSafeUser(updated));
     } catch (error) {
       console.error("Error updating client:", error);
       res.status(500).json({ message: "Failed to update client" });
@@ -776,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin API - Delete client
   app.delete('/api/admin/clients/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
 
       const targetUser = await storage.getUser(req.params.id);
       if (!targetUser) {
@@ -840,7 +852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/merchants', isAuthenticated, requireRole('admin'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const validation = createMerchantSchema.safeParse(req.body);
       if (!validation.success) {
@@ -1422,7 +1434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe checkout session for gift card purchase
   app.post('/api/gift-cards/checkout/stripe', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { giftCardId } = req.body;
 
       if (!giftCardId) {
@@ -1477,7 +1489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Verify Stripe payment and complete gift card purchase
   app.post('/api/gift-cards/checkout/stripe/verify', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { sessionId } = req.body;
 
       if (!sessionId) {
@@ -1522,7 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Complete gift card purchase after PayPal payment
   app.post('/api/gift-cards/checkout/paypal/complete', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { giftCardId, paypalOrderId } = req.body;
 
       if (!giftCardId || !paypalOrderId) {
@@ -1555,7 +1567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/gift-cards/purchase', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validation = purchaseGiftCardSchema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ message: validation.error.errors[0].message });
@@ -1588,7 +1600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client: Get my gift card balances
   app.get('/api/gift-cards/my-balances', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const balances = await storage.getGiftCardBalancesByUser(userId);
       
       // Get gift card details for each balance
@@ -1614,7 +1626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client: Get my gift card purchase history
   app.get('/api/gift-cards/my-purchases', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const purchases = await storage.getGiftCardPurchasesByUser(userId);
       
       const purchasesWithDetails = await Promise.all(
@@ -1642,7 +1654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/gift-cards/transfer', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validation = transferGiftCardSchema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ message: validation.error.errors[0].message });
@@ -1703,7 +1715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user favorites
   app.get('/api/favorites', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const favorites = await storage.getUserFavorites(userId);
       res.json(favorites);
     } catch (error) {
@@ -1715,7 +1727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add favorite - validate merchantId exists, idempotent (returns 200 if already exists)
   app.post('/api/favorites/:merchantId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchantId = req.params.merchantId;
       
       if (!merchantId || typeof merchantId !== 'string' || merchantId.length < 1) {
@@ -1738,7 +1750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Remove favorite
   app.delete('/api/favorites/:merchantId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchantId = req.params.merchantId;
       
       if (!merchantId || typeof merchantId !== 'string') {
@@ -1758,7 +1770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get merchant analytics
   app.get('/api/merchant/analytics', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -1785,7 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get merchant goal
   app.get('/api/merchant/goals/:month/:year', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -1805,7 +1817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set merchant goal
   app.post('/api/merchant/goals', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -1829,7 +1841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get recurring promotions for merchant
   app.get('/api/merchant/recurring-promotions', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -1845,7 +1857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create recurring promotion
   app.post('/api/merchant/recurring-promotions', isAuthenticated, requireRole('merchant'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const merchant = await storage.getMerchantByUserId(userId);
       if (!merchant) {
         return res.status(404).json({ message: "Merchant not found" });
@@ -2506,7 +2518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get pending cashback entries with unlock dates
   app.get('/api/cashback/pending-entries', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const entries = await storage.getCashbackEntriesByUser(userId);
       const pendingEntries = entries.filter(e => e.status === 'pending');
       res.json(pendingEntries);

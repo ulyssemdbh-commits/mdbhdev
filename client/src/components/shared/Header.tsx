@@ -16,7 +16,7 @@ export function Header({ title = "REV", showLogout = true, showNotifications = t
       onLogout();
     }
     try {
-      await fetch("/api/logout", { method: "POST", credentials: "include" });
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch (error) {
       console.error("Logout error:", error);
     }

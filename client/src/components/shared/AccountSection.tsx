@@ -26,7 +26,7 @@ export function AccountSection({ user, showRole = false }: AccountSectionProps) 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      const response = await fetch("/api/logout", { method: "POST", credentials: "include" });
+      const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
       if (!response.ok) {
         throw new Error("Logout failed");
       }

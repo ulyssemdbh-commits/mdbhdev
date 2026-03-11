@@ -113,8 +113,11 @@ export function ProfileCompletion({ onComplete }: ProfileCompletionProps) {
               type="button"
               variant="ghost"
               className="w-full gap-2 text-muted-foreground"
-              onClick={() => {
-                window.location.href = "/api/logout";
+              onClick={async () => {
+                try {
+                  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                } catch (e) {}
+                window.location.href = "/login";
               }}
               data-testid="button-logout-profile"
             >

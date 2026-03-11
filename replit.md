@@ -27,7 +27,7 @@ The frontend uses a role-based routing system where authenticated users are dire
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
 - **API Pattern**: RESTful endpoints under `/api/` prefix
-- **Authentication**: Replit OpenID Connect (OIDC) with Passport.js
+- **Authentication**: Email/password with Passport.js Local Strategy + bcryptjs
 - **Session Management**: Express sessions stored in PostgreSQL via connect-pg-simple
 
 ### Data Storage
@@ -44,7 +44,7 @@ Key database tables:
 - `sessions` - Authentication session storage
 
 ### Authentication Flow
-Uses Replit's OIDC provider for authentication. Users authenticate through Replit, and the system creates/updates user records on login. Session data is persisted in PostgreSQL for reliability.
+Uses email/password authentication with Passport.js Local Strategy. Passwords are hashed with bcryptjs (12 rounds). Users register with email + password and receive a unique REVid. Session data is persisted in PostgreSQL for reliability. Admin account: djedoumaurice@gmail.com / Admin123!
 
 ### Build System
 - Development: Vite dev server with HMR proxied through Express
@@ -54,12 +54,13 @@ Uses Replit's OIDC provider for authentication. Users authenticate through Repli
 ## External Dependencies
 
 ### Third-Party Services
-- **Replit OIDC**: Primary authentication provider
+- **Stripe**: Payment processing for gift cards
+- **PayPal**: Alternative payment for gift cards
 - **PostgreSQL**: Database (provisioned via Replit)
 
 ### Key npm Packages
 - `drizzle-orm` / `drizzle-kit` - Database ORM and migrations
-- `passport` / `openid-client` - Authentication
+- `passport` / `passport-local` / `bcryptjs` - Authentication
 - `react-qr-code` / `@zxing/library` - QR code generation and scanning
 - `jspdf` / `jspdf-autotable` - PDF report generation
 - `date-fns` - Date formatting for French locale
